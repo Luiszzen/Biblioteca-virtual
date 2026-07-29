@@ -50,6 +50,7 @@ def login_required(f):
 # index.html  ->  GET /
 # ---------------------------------------------------------------------------
 @app.route("/")
+@login_required
 def index():
     """
     Home page. Shows a few recently-added or available books.
@@ -101,7 +102,7 @@ def login():
     # GET request: just show the login form
     # FRONTEND: log_in.html needs a form posting to /login with
     # fields named exactly "username" and "password"
-    return render_template("log_in.html")
+    return render_template("login.html")
 
 
 @app.route("/logout")

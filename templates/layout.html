@@ -14,7 +14,7 @@
     <div class="collapse navbar-collapse" id="navbar">
         {% if session["user_id"] %}
             <ul class="navbar-nav me-auto mt-2">
-                <li class="nav-item"><a class="nav-link" href="/return_book">Return book</a></li>
+                <li class="nav-item"><a class="nav-link" href="/return">Return book</a></li>
                 <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
                 <li class="nav-item"><a class="nav-link" href="/search">Search</a></li>
                 <li class="nav-item"><a class="nav-link" href="/add_book">Add book</a>"</li>
@@ -29,5 +29,8 @@
             </ul>
         {% endif %}
     </div>
+    <main>
+        {% block main %}{% endblock %}
+    </main>
 </body>
 </html>

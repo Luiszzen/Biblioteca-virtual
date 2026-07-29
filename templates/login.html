@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Log in
+{% endblock %}  
+
+
+{% block main %}
+
+   <form action="/login" method="post">
+ 
+        <!-- name="username" y name="password" deben coincidir EXACTO
+             con request.form.get("username") / .get("password") en app.py -->
+        <div class="mb-3">
+            <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Username" type="text">
+        </div>
+ 
+        <div class="mb-3">
+            <input class="form-control" name="password" placeholder="Password" type="password">
+        </div>
+ 
+        <button class="btn btn-primary" type="submit">Log In</button>
+ 
+    </form>
+    
+{% endblock %}
