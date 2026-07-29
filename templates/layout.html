@@ -16,28 +16,29 @@
 </head>
 
 <body>
-    <div class="collapse navbar-collapse" id="navbar">
-        {% if session["user_id"] %}
-            <ul class="navbar-nav me-auto mt-2">
-                <li class="nav-item"><a class="nav-link" href="/return_book">Return book</a></li>
-                <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
-                <li class="nav-item"><a class="nav-link" href="/search">Search</a></li>
-                <li class="nav-item"><a class="nav-link" href="/add_book">Add book</a></li>
-                <li class="nav-item"><a class="nav-link" href="/borrow">Borrow</a></li>
-                <li class="nav-item"><a class="nav-link" href="/review">Review</a></li>
-                <li class="nav-item"><a class="nav-link" href="/report">Report</a></li>
-            </ul>
-            <ul class="navbar-nav ms-auto mt-2">
-                <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
-            </ul>
-        {% else %}
-    ...
-            <ul class="navbar-nav ms-auto mt-2">
-                <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
-            </ul>
-        {% endif %}
-    </div>
+    <nav class="navbar navbar-expand-lg bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Biblioteca Virtual</a>
+
+            <div class="navbar-collapse" id="navbar">
+                {% if session["user_id"] %}
+                    <ul class="navbar-nav me-auto mt-2">
+                        <li class="nav-item"><a class="nav-link" href="/return_book">Return book</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/history">History</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/search">Search</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/add_book">Add book</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/borrow">Borrow</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/review">Review</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/report">Report</a></li>
+                    </ul>
+                    <ul class="navbar-nav ms-auto mt-2">
+                        <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
     <main>
 
         {% with messages = get_flashed_messages() %}

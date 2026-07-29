@@ -2,23 +2,18 @@ import os
 from functools import wraps
 
 from cs50 import SQL
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, jsonify, redirect, render_template, request, session
 from flask_session import Session
 from werkzeug.security import check_password_hash, generate_password_hash
 from better_profanity import profanity
 from datetime import datetime
 
 app = Flask(__name__)
-# NOTE: removed the duplicate "app = Flask(__name__)" that used to be here.
-# Having it twice threw away the session config below before any routes ran.
 
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 profanity.load_censor_words()
-
-# Open (or create) the database file. This is the piece that was missing
-# before: cs50.SQL was imported but never actually pointed at a file.
 db = SQL("sqlite:///library.db")
 
 
@@ -46,16 +41,12 @@ def login_required(f):
     return decorated_function
 
 
-# ---------------------------------------------------------------------------
-# index.html  ->  GET /
-# ---------------------------------------------------------------------------
+
 @app.route("/")
 def index():
     """Homepage informativa, sin lógica de libros."""
     return render_template("index.html")
-# ---------------------------------------------------------------------------
-# log_in.html  ->  GET/POST /login
-# ---------------------------------------------------------------------------
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in."""
@@ -93,9 +84,6 @@ def logout():
     return redirect("/")
 
 
-# ---------------------------------------------------------------------------
-# register.html  ->  GET/POST /register
-# ---------------------------------------------------------------------------
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register a new user."""
@@ -130,9 +118,7 @@ def register():
 
     return redirect("/")
 
-# ---------------------------------------------------------------------------
-# add_book.html  ->  GET/POST /add_book
-# ---------------------------------------------------------------------------
+
 @app.route("/add_book", methods=["GET", "POST"])
 @login_required
 def add_book():
@@ -168,34 +154,57 @@ def add_book():
     return render_template("add_book.html")
 
 
-# ---------------------------------------------------------------------------
-# search.html  ->  GET /search
-# ---------------------------------------------------------------------------
+# Columnas permitidas para buscar -- whitelist para evitar SQL injection,
+# ya que el nombre de columna no se puede parametrizar con "?"
+SEARCH_COLUMNS = {
+    "title": "title",
+    "author": "author",
+    "category": "category",
+    "status": "status",
+    "language": "language",
+    "publisher": "publisher",
+    "isbn": "isbn",
+}
+
+
 @app.route("/search")
 def search():
-    """Search the catalog by title or author."""
+    """Búsqueda normal (con botón), por cualquier categoría."""
 
     query = request.args.get("q", "")
+    category = request.args.get("category", "title")
+
+    if category not in SEARCH_COLUMNS:
+        category = "title"
+
+    column = SEARCH_COLUMNS[category]
     books = []
 
     if query:
         like_query = f"%{query}%"
-        books = db.execute(
-            "SELECT * FROM books WHERE title LIKE ? OR author LIKE ?",
-            like_query, like_query
-        )
+        books = db.execute(f"SELECT * FROM books WHERE {column} LIKE ?", like_query)
 
-    # FRONTEND: search.html needs a GET form (action="/search") with an
-    # input named "q", then loop over `books` to display results, e.g.
-    #     {% for book in books %}
-    #         <p>{{ book.title }} - {{ book.status }}</p>
-    #     {% endfor %}
-    return render_template("search.html", books=books, query=query)
+    return render_template("search.html", books=books, query=query, category=category)
 
 
-# ---------------------------------------------------------------------------
-# borrow.html  ->  GET/POST /borrow
-# ---------------------------------------------------------------------------
+@app.route("/search_live")
+def search_live():
+    """
+    Autocompletado en vivo: devuelve JSON con títulos que coinciden,
+    para que el JS lo muestre debajo de la barra sin recargar la página.
+    """
+    query = request.args.get("q", "")
+
+    if not query:
+        return jsonify([])
+
+    like_query = f"%{query}%"
+    books = db.execute(
+        "SELECT id, title, author FROM books WHERE title LIKE ? LIMIT 8", like_query
+    )
+    return jsonify(books)
+
+
 @app.route("/borrow", methods=["GET", "POST"])
 @login_required
 def borrow():
@@ -231,9 +240,6 @@ def borrow():
     return render_template("borrow.html", books=available_books)
 
 
-# ---------------------------------------------------------------------------
-# return.html  ->  GET/POST /return_book
-# ---------------------------------------------------------------------------
 @app.route("/return_book", methods=["GET", "POST"])
 @login_required
 def return_book():
@@ -274,9 +280,6 @@ def return_book():
     return render_template("return.html", loans=active_loans)
 
 
-# ---------------------------------------------------------------------------
-# history.html  ->  GET /history
-# ---------------------------------------------------------------------------
 @app.route("/history")
 @login_required
 def history():
@@ -298,9 +301,6 @@ def history():
     return render_template("history.html", loans=loans)
 
 
-# ---------------------------------------------------------------------------
-# report.html  ->  GET /report
-# ---------------------------------------------------------------------------
 @app.route("/report")
 @login_required
 def report():
@@ -325,9 +325,6 @@ def report():
     return render_template("report.html", most_borrowed=most_borrowed, currently_out=currently_out)
 
 
-# ---------------------------------------------------------------------------
-# review.html  ->  GET/POST /review
-# ---------------------------------------------------------------------------
 @app.route("/review", methods=["GET", "POST"])
 @login_required
 def review():
@@ -360,9 +357,6 @@ def review():
     return render_template("review.html", books=books)
 
 
-# ---------------------------------------------------------------------------
-# apology.html  ->  used internally by the apology() helper below, not routed
-# ---------------------------------------------------------------------------
 def apology(message, code=400):
     """
     Render an error page. Called from other routes, e.g. return apology("...", 400).

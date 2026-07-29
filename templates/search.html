@@ -7,6 +7,86 @@
 
 {% block main %}
 
-    <h>Esto es search</h>
+    <form action="/search" method="get">
+
+        <!-- name="category" debe coincidir con SEARCH_COLUMNS en app.py -->
+        <select name="category" id="category">
+            <option value="title">Título</option>
+            <option value="author">Autor</option>
+            <option value="category">Categoría</option>
+            <option value="status">Estado</option>
+            <option value="language">Idioma</option>
+            <option value="publisher">Editorial</option>
+            <option value="isbn">ISBN</option>
+        </select>
+
+        <!-- name="q" debe coincidir con request.args.get("q") en app.py -->
+        <input type="text" name="q" id="q" placeholder="Buscar..." autocomplete="off" value="{{ query or '' }}">
+
+        <button type="submit">Buscar</button>
+
+        <!-- aquí aparecen las sugerencias en vivo, solo cuando category = title -->
+        <ul id="suggestions"></ul>
+
+    </form>
+
+    <hr>
+
+    {% if books %}
+        <h3>Resultados</h3>
+        <ul>
+            {% for book in books %}
+                <li>
+                    <strong>{{ book.title }}</strong> - {{ book.author }}
+                    ({{ book.category }}, {{ book.language }}) - Estado: {{ book.status }}
+                </li>
+            {% endfor %}
+        </ul>
+    {% elif query %}
+        <p>No se encontraron resultados para "{{ query }}".</p>
+    {% endif %}
+
+    <script>
+        const categorySelect = document.getElementById("category");
+        const searchInput = document.getElementById("q");
+        const suggestionsList = document.getElementById("suggestions");
+
+        // Deja seleccionada la categoría con la que se buscó por última vez
+        categorySelect.value = "{{ category or 'title' }}";
+
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value;
+
+            // El autocompletado en vivo solo aplica cuando se busca por título
+            if (categorySelect.value !== "title" || query.length === 0) {
+                suggestionsList.innerHTML = "";
+                return;
+            }
+
+            fetch(`/search_live?q=${encodeURIComponent(query)}`)
+                .then((response) => response.json())
+                .then((books) => {
+                    suggestionsList.innerHTML = "";
+                    books.forEach((book) => {
+                        const li = document.createElement("li");
+                        li.textContent = `${book.title} - ${book.author}`;
+                        li.style.cursor = "pointer";
+
+                        // Al hacer clic en una sugerencia, la pone en el input
+                        li.addEventListener("click", () => {
+                            searchInput.value = book.title;
+                            suggestionsList.innerHTML = "";
+                        });
+
+                        suggestionsList.appendChild(li);
+                    });
+                });
+        });
+
+        // Si cambias de categoría, borra las sugerencias de título
+        categorySelect.addEventListener("change", () => {
+            suggestionsList.innerHTML = "";
+        });
+    </script>
 
 {% endblock %}
