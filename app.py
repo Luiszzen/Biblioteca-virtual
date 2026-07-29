@@ -168,8 +168,6 @@ SEARCH_COLUMNS = {
 
 @app.route("/search")
 def search():
-    """Búsqueda normal (con botón), por cualquier categoría."""
-
     query = request.args.get("q", "")
     category = request.args.get("category", "title")
 
@@ -179,11 +177,19 @@ def search():
     column = SEARCH_COLUMNS[category]
     books = []
 
+    categories = db.execute("SELECT DISTINCT category FROM books WHERE category IS NOT NULL AND category != '' ORDER BY category")
+
     if query:
         like_query = f"%{query}%"
         books = db.execute(f"SELECT * FROM books WHERE {column} LIKE ?", like_query)
 
-    return render_template("search.html", books=books, query=query, category=category)
+    return render_template(
+        "search.html",
+        books=books,
+        query=query,
+        category=category,
+        categories=categories
+    )
 
 
 @app.route("/search_live")

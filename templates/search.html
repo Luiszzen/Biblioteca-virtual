@@ -4,86 +4,116 @@
     Search
 {% endblock %}
 
-
 {% block main %}
 
-    <form action="/search" method="get">
+<form action="/search" method="get">
 
-        <!-- name="category" debe coincidir con SEARCH_COLUMNS en app.py -->
-        <select name="category" id="category">
-            <option value="title">Título</option>
-            <option value="author">Autor</option>
-            <option value="category">Categoría</option>
-            <option value="status">Estado</option>
+    <select name="category" id="category">
+        <option value="title" {% if category == "title" %}selected{% endif %}>Título</option>
+        <option value="author" {% if category == "author" %}selected{% endif %}>Autor</option>
+        <option value="category" {% if category == "category" %}selected{% endif %}>Categoría</option>
+        <option value="status" {% if category == "status" %}selected{% endif %}>Estado</option>
+    </select>
+
+    <div id="text-search">
+        <input
+            type="text"
+            name="q"
+            id="q"
+            placeholder="Buscar..."
+            autocomplete="off"
+            value="{{ query or '' }}"
+        >
+    </div>
+
+    <div id="status-search" style="display: none;">
+        <select name="q" id="status-q">
+            <option value="">Selecciona un estado</option>
+            <option value="available" {% if query == "available" %}selected{% endif %}>Disponible</option>
+            <option value="borrowed" {% if query == "borrowed" %}selected{% endif %}>No disponible</option>
         </select>
+    </div>
 
-        <!-- name="q" debe coincidir con request.args.get("q") en app.py -->
-        <input type="text" name="q" id="q" placeholder="Buscar..." autocomplete="off" value="{{ query or '' }}">
-
-        <button type="submit">Buscar</button>
-
-        <!-- aquí aparecen las sugerencias en vivo, solo cuando category = title -->
-        <ul id="suggestions"></ul>
-
-    </form>
-
-    <hr>
-
-    {% if books %}
-        <h3>Resultados</h3>
-        <ul>
-            {% for book in books %}
-                <li>
-                    <strong>{{ book.title }}</strong> - {{ book.author }}
-                    ({{ book.category }}, {{ book.language }}) - Estado: {{ book.status }}
-                </li>
+    <div id="category-search" style="display: none;">
+        <select name="q" id="category-q">
+            <option value="">Selecciona una categoría</option>
+            {% for c in categories %}
+                <option value="{{ c.category }}" {% if query == c.category %}selected{% endif %}>
+                    {{ c.category }}
+                </option>
             {% endfor %}
-        </ul>
-    {% elif query %}
-        <p>No se encontraron resultados para "{{ query }}".</p>
-    {% endif %}
+        </select>
+    </div>
 
-    <script>
-        const categorySelect = document.getElementById("category");
-        const searchInput = document.getElementById("q");
-        const suggestionsList = document.getElementById("suggestions");
+    <button type="submit">Buscar</button>
 
-        // Deja seleccionada la categoría con la que se buscó por última vez
-        categorySelect.value = "{{ category or 'title' }}";
+    <ul id="suggestions"></ul>
+</form>
 
-        searchInput.addEventListener("input", () => {
-            const query = searchInput.value;
+<hr>
 
-            // El autocompletado en vivo solo aplica cuando se busca por título
-            if (categorySelect.value !== "title" || query.length === 0) {
-                suggestionsList.innerHTML = "";
-                return;
-            }
+{% if books %}
+    <h3>Resultados</h3>
+    <ul>
+        {% for book in books %}
+            <li>
+                <strong>{{ book.title }}</strong> - {{ book.author }}
+                ({{ book.category }}, {{ book.language }}) - Estado: {{ book.status }}
+            </li>
+        {% endfor %}
+    </ul>
+{% elif query %}
+    <p>No se encontraron resultados para "{{ query }}".</p>
+{% endif %}
 
-            fetch(`/search_live?q=${encodeURIComponent(query)}`)
-                .then((response) => response.json())
-                .then((books) => {
-                    suggestionsList.innerHTML = "";
-                    books.forEach((book) => {
-                        const li = document.createElement("li");
-                        li.textContent = `${book.title} - ${book.author}`;
-                        li.style.cursor = "pointer";
+<script>
+    const categorySelect = document.getElementById("category");
+    const textSearch = document.getElementById("text-search");
+    const statusSearch = document.getElementById("status-search");
+    const categorySearch = document.getElementById("category-search");
+    const searchInput = document.getElementById("q");
+    const suggestionsList = document.getElementById("suggestions");
 
-                        // Al hacer clic en una sugerencia, la pone en el input
-                        li.addEventListener("click", () => {
-                            searchInput.value = book.title;
-                            suggestionsList.innerHTML = "";
-                        });
+    function updateSearchField() {
+        const selected = categorySelect.value;
 
-                        suggestionsList.appendChild(li);
-                    });
-                });
-        });
+        textSearch.style.display = (selected === "title" || selected === "author") ? "block" : "none";
+        statusSearch.style.display = (selected === "status") ? "block" : "none";
+        categorySearch.style.display = (selected === "category") ? "block" : "none";
 
-        // Si cambias de categoría, borra las sugerencias de título
-        categorySelect.addEventListener("change", () => {
+        suggestionsList.innerHTML = "";
+    }
+
+    updateSearchField();
+
+    categorySelect.addEventListener("change", updateSearchField);
+
+    searchInput.addEventListener("input", () => {
+        const query = searchInput.value;
+
+        if (categorySelect.value !== "title" || query.length === 0) {
             suggestionsList.innerHTML = "";
-        });
-    </script>
+            return;
+        }
+
+        fetch(`/search_live?q=${encodeURIComponent(query)}`)
+            .then((response) => response.json())
+            .then((books) => {
+                suggestionsList.innerHTML = "";
+                books.forEach((book) => {
+                    const li = document.createElement("li");
+                    li.textContent = `${book.title} - ${book.author}`;
+                    li.style.cursor = "pointer";
+
+                    li.addEventListener("click", () => {
+                        searchInput.value = book.title;
+                        suggestionsList.innerHTML = "";
+                    });
+
+                    suggestionsList.appendChild(li);
+                });
+            });
+    });
+</script>
 
 {% endblock %}
