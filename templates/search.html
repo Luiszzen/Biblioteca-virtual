@@ -71,7 +71,10 @@
     const textSearch = document.getElementById("text-search");
     const statusSearch = document.getElementById("status-search");
     const categorySearch = document.getElementById("category-search");
-    const searchInput = document.getElementById("q");
+
+    const textInput = document.getElementById("q");
+    const statusInput = document.getElementById("status-q");
+    const categoryInput = document.getElementById("category-q");
     const suggestionsList = document.getElementById("suggestions");
 
     function updateSearchField() {
@@ -81,38 +84,82 @@
         statusSearch.style.display = (selected === "status") ? "block" : "none";
         categorySearch.style.display = (selected === "category") ? "block" : "none";
 
+        textInput.removeAttribute("name");
+        statusInput.removeAttribute("name");
+        categoryInput.removeAttribute("name");
+
+        if (selected === "title" || selected === "author") {
+            textInput.setAttribute("name", "q");
+        } else if (selected === "status") {
+            statusInput.setAttribute("name", "q");
+        } else if (selected === "category") {
+            categoryInput.setAttribute("name", "q");
+        }
+
         suggestionsList.innerHTML = "";
+        suggestionsList.style.display = "none";
+    }
+
+    async function loadSuggestions() {
+        const query = textInput.value.trim();
+
+        if (categorySelect.value !== "title" || query.length === 0) {
+            suggestionsList.innerHTML = "";
+            suggestionsList.style.display = "none";
+            return;
+        }
+
+        try {
+            const response = await fetch(`/search_live?q=${encodeURIComponent(query)}`);
+
+            if (!response.ok) {
+                throw new Error("Error al obtener sugerencias");
+            }
+
+            const books = await response.json();
+            suggestionsList.innerHTML = "";
+
+            if (books.length === 0) {
+                suggestionsList.style.display = "none";
+                return;
+            }
+
+            books.forEach((book) => {
+                const li = document.createElement("li");
+                li.textContent = `${book.title} - ${book.author}`;
+                li.style.cursor = "pointer";
+                li.style.padding = "8px";
+                li.style.border = "1px solid #ccc";
+                li.style.listStyle = "none";
+                li.style.backgroundColor = "white";
+
+                li.addEventListener("click", () => {
+                    textInput.value = book.title;
+                    suggestionsList.innerHTML = "";
+                    suggestionsList.style.display = "none";
+                });
+
+                suggestionsList.appendChild(li);
+            });
+
+            suggestionsList.style.display = "block";
+        } catch (error) {
+            console.error("Autocomplete error:", error);
+            suggestionsList.innerHTML = "";
+            suggestionsList.style.display = "none";
+        }
     }
 
     updateSearchField();
 
     categorySelect.addEventListener("change", updateSearchField);
+    textInput.addEventListener("input", loadSuggestions);
 
-    searchInput.addEventListener("input", () => {
-        const query = searchInput.value;
-
-        if (categorySelect.value !== "title" || query.length === 0) {
+    document.addEventListener("click", (event) => {
+        if (!suggestionsList.contains(event.target) && event.target !== textInput) {
             suggestionsList.innerHTML = "";
-            return;
+            suggestionsList.style.display = "none";
         }
-
-        fetch(`/search_live?q=${encodeURIComponent(query)}`)
-            .then((response) => response.json())
-            .then((books) => {
-                suggestionsList.innerHTML = "";
-                books.forEach((book) => {
-                    const li = document.createElement("li");
-                    li.textContent = `${book.title} - ${book.author}`;
-                    li.style.cursor = "pointer";
-
-                    li.addEventListener("click", () => {
-                        searchInput.value = book.title;
-                        suggestionsList.innerHTML = "";
-                    });
-
-                    suggestionsList.appendChild(li);
-                });
-            });
     });
 </script>
 

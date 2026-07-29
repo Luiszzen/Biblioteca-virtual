@@ -194,21 +194,17 @@ def search():
 
 @app.route("/search_live")
 def search_live():
-    """
-    Autocompletado en vivo: devuelve JSON con títulos que coinciden,
-    para que el JS lo muestre debajo de la barra sin recargar la página.
-    """
-    query = request.args.get("q", "")
+    query = request.args.get("q", "").strip()
 
     if not query:
         return jsonify([])
 
     like_query = f"%{query}%"
     books = db.execute(
-        "SELECT id, title, author FROM books WHERE title LIKE ? LIMIT 8", like_query
+        "SELECT id, title, author FROM books WHERE title LIKE ? ORDER BY title LIMIT 8",
+        like_query
     )
     return jsonify(books)
-
 
 @app.route("/borrow", methods=["GET", "POST"])
 @login_required
