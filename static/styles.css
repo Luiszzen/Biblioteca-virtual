@@ -53,17 +53,9 @@ nav.navbar .nav-link:hover {
     font-size: 10rem;
 }
 
-#down {
-    position: fixed;
-    bottom: 20%;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
 .card-body {
     background-color: rgba(255, 255, 255, 0.2) !important;
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     margin-bottom: 2rem;
     padding: 1rem;
@@ -73,16 +65,10 @@ textarea, input, select {
     width: 100%;
     padding: 15px;
     font-size: 16px;
-    color: white;
+    color: black;
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 15px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
-    outline: none;
-    resize: none;
-    transition: all 0.3s ease;
 }
 
 /* Efecto al enfocar */
@@ -90,8 +76,4 @@ textarea:focus {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-}
-
-.form-label, .form-text, .blanco, table{
-    color: white !important;
 }

@@ -163,7 +163,6 @@ SEARCH_COLUMNS = {
     "status": "status",
     "language": "language",
     "publisher": "publisher",
-    "isbn": "isbn",
 }
 
 
