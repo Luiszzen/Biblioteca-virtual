@@ -76,18 +76,15 @@ def login():
     session.clear()
 
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        # Basic validation
-        if not username:
-            return apology("must provide username", 400)
-        if not password:
-            return apology("must provide password", 400)
+        if not request.form.get("username"):
+            return apology("muest provide username", 403)
+        
+        elif not request.form.get("password"):
+            return apology("must provide password", 403)
 
         # Look up the user
         rows = db.execute(
-            "SELECT * FROM users WHERE username = ?", username
+            "SELECT * FROM users WHERE username = ?", request.form.get("username")
         )
 
         # Check that the username exists and the password hash matches
