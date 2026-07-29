@@ -116,7 +116,10 @@ def logout():
 def register():
     """Register a new user."""
 
-    if request.method == "POST":
+    if request.method == "GET":
+        return render_template("register.html")
+
+    else:
         username = request.form.get("username")
         password = request.form.get("password")
         confirmation = request.form.get("confirmation")
@@ -128,21 +131,20 @@ def register():
         if password != confirmation:
             return apology("passwords must match", 400)
 
+        rows = db.execute("SELECT username FROM users")
+        current_users = []
+        for row in rows:
+            current_users.append(row["username"])
+        if username in current_users:
+            return apology("that username is already taken")
         # Hash the password -- never store it in plain text
-        hash_ = generate_password_hash(password)
+        password_hashed = generate_password_hash(password)
+        db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, password_hashed)
 
-        try:
-            new_id = db.execute(
-                "INSERT INTO users (username, hash) VALUES (?, ?)",
-                username, hash_
-            )
-        except Exception:
-            # Most likely a UNIQUE constraint failure on username
-            return apology("username already taken", 400)
+        baba = db.execute("SELECT * FROM users WHERE username = ?", username)
+        session["user_id"] = baba[0]["id"]
 
-        # Log the new user in right away
-        session["user_id"] = new_id
-        return redirect("/")
+        return redirect("/")   
 
     # FRONTEND: register.html needs a form posting to /register with
     # fields named "username", "password", "confirmation"
