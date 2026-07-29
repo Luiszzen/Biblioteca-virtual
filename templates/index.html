@@ -6,5 +6,22 @@
 
 
 {% block main %}
-    <h>Esto es index</h>
+
+    {% if session["user_id"] %}
+
+        <h2>Informacion de la pagina</h2>
+        
+
+    {% else %}
+
+        <div class="text-center mt-5">
+            <h1>Bienvenido a Biblioteca Virtual</h1>
+            <p>¿Qué deseas hacer?</p>
+
+            <a class="btn btn-primary btn-lg m-2" href="/login">Iniciar sesión</a>
+            <a class="btn btn-outline-primary btn-lg m-2" href="/register">Registrarme</a>
+        </div>
+
+    {% endif %}
+
 {% endblock %}

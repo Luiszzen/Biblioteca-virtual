@@ -50,21 +50,9 @@ def login_required(f):
 # index.html  ->  GET /
 # ---------------------------------------------------------------------------
 @app.route("/")
-@login_required
 def index():
-    """
-    Home page. Shows a few recently-added or available books.
-    FRONTEND: loop over `books` in index.html, e.g.
-        {% for book in books %}
-            <p>{{ book.title }} - {{ book.author }}</p>
-        {% endfor %}
-    """
-    books = db.execute(
-        "SELECT id, title, author, status FROM books ORDER BY id DESC LIMIT 10"
-    )
-    return render_template("index.html", books=books)
-
-
+    """Homepage informativa, sin lógica de libros."""
+    return render_template("index.html")
 # ---------------------------------------------------------------------------
 # log_in.html  ->  GET/POST /login
 # ---------------------------------------------------------------------------
@@ -72,33 +60,29 @@ def index():
 def login():
     """Log user in."""
 
-    # Forget any user_id from a previous session first, on both GET and POST
     session.clear()
 
     if request.method == "POST":
-        if not request.form.get("username"):
-            return apology("muest provide username", 403)
-        
-        elif not request.form.get("password"):
-            return apology("must provide password", 403)
+        username = request.form.get("username")
+        password = request.form.get("password")   # <- esto faltaba
 
-        # Look up the user
-        rows = db.execute(
-            "SELECT * FROM users WHERE username = ?", request.form.get("username")
-        )
+        if not username:
+            flash("must provide username")
+            return render_template("login.html")
 
-        # Check that the username exists and the password hash matches
+        if not password:
+            flash("must provide password")
+            return render_template("login.html")
+
+        rows = db.execute("SELECT * FROM users WHERE username = ?", username)
+
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], password):
-            return apology("invalid username and/or password", 403)
+            flash("invalid username and/or password")
+            return render_template("login.html")
 
-        # Remember which user is logged in
         session["user_id"] = rows[0]["id"]
-
         return redirect("/")
 
-    # GET request: just show the login form
-    # FRONTEND: log_in.html needs a form posting to /login with
-    # fields named exactly "username" and "password"
     return render_template("login.html")
 
 
@@ -119,37 +103,32 @@ def register():
     if request.method == "GET":
         return render_template("register.html")
 
-    else:
-        username = request.form.get("username")
-        password = request.form.get("password")
-        confirmation = request.form.get("confirmation")
+    username = request.form.get("username")
+    password = request.form.get("password")
+    confirmation = request.form.get("confirmation")
 
-        if not username:
-            return apology("must provide username", 400)
-        if not password:
-            return apology("must provide password", 400)
-        if password != confirmation:
-            return apology("passwords must match", 400)
+    if not username:
+        flash("must provide username")
+        return render_template("register.html")
+    if not password:
+        flash("must provide password")
+        return render_template("register.html")
+    if password != confirmation:
+        flash("passwords must match")
+        return render_template("register.html")
 
-        rows = db.execute("SELECT username FROM users")
-        current_users = []
-        for row in rows:
-            current_users.append(row["username"])
-        if username in current_users:
-            return apology("that username is already taken")
-        # Hash the password -- never store it in plain text
-        password_hashed = generate_password_hash(password)
-        db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, password_hashed)
+    existing = db.execute("SELECT username FROM users WHERE username = ?", username)
+    if existing:
+        flash("that username is already taken")
+        return render_template("register.html")
 
-        baba = db.execute("SELECT * FROM users WHERE username = ?", username)
-        session["user_id"] = baba[0]["id"]
+    password_hashed = generate_password_hash(password)
+    db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, password_hashed)
 
-        return redirect("/")   
+    new_user = db.execute("SELECT * FROM users WHERE username = ?", username)
+    session["user_id"] = new_user[0]["id"]
 
-    # FRONTEND: register.html needs a form posting to /register with
-    # fields named "username", "password", "confirmation"
-    return render_template("register.html")
-
+    return redirect("/")
 
 # ---------------------------------------------------------------------------
 # add_book.html  ->  GET/POST /add_book
