@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Admin
+{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2>Solicitudes pendientes</h2>
+
+    {% if not pending %}
+        <p>No hay solicitudes pendientes.</p>
+    {% endif %}
+
+    {% for r in pending %}
+        <div class="card mb-3">
+            <div class="card-body">
+
+                {% if r.type == "borrow" %}
+                    <p><strong>{{ r.username }}</strong> quiere <strong>prestar</strong>: {{ r.book_title }}</p>
+
+                {% elif r.type == "return" %}
+                    <p><strong>{{ r.username }}</strong> quiere <strong>devolver</strong>: {{ r.book_title }}</p>
+
+                {% elif r.type == "add_book" %}
+                    <p><strong>{{ r.username }}</strong> quiere <strong>agregar</strong> el libro:</p>
+                    <ul>
+                        <li>Título: {{ r.title }}</li>
+                        <li>Autor: {{ r.author }}</li>
+                        <li>Editorial: {{ r.publisher }}</li>
+                        <li>Año: {{ r.year }}</li>
+                        <li>ISBN: {{ r.isbn }}</li>
+                        <li>Idioma: {{ r.language }}</li>
+                        <li>Categoría: {{ r.category }}</li>
+                    </ul>
+                {% endif %}
+
+                <form action="/admin/approve/{{ r.id }}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-success">Aprobar</button>
+                </form>
+
+                <form action="/admin/reject/{{ r.id }}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-danger">Rechazar</button>
+                </form>
+
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}

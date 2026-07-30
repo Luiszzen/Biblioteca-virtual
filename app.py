@@ -40,7 +40,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = db.execute("SELECT is_admin FROM users WHERE id = ?", session["user_id"])
+        if not user or not user[0]["is_admin"]:
+            return apology("admin access required", 403)
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route("/")
 def index():
@@ -72,6 +79,7 @@ def login():
             return render_template("login.html")
 
         session["user_id"] = rows[0]["id"]
+        session["is_admin"] = bool(rows[0]["is_admin"])
         return redirect("/")
 
     return render_template("login.html")
@@ -119,9 +127,7 @@ def register():
     return redirect("/")
 
 
-@app.route("/add_book", methods=["GET", "POST"])
-@login_required
-def add_book():
+
     """Add a new book to the catalog."""
 
     if request.method == "POST":
@@ -152,6 +158,71 @@ def add_book():
     # FRONTEND: add_book.html needs a form posting to /add_book with fields
     # named "title", "author", "publisher", "year", "isbn", "language", "category"
     return render_template("add_book.html")
+
+
+@app.route("/add_book", methods=["GET", "POST"])
+@login_required
+def add_book():
+    """Solicita agregar un libro nuevo -- queda pendiente hasta que un admin lo apruebe."""
+
+    if request.method == "POST":
+        title = request.form.get("title")
+        author = request.form.get("author")
+        publisher = request.form.get("publisher")
+        year = request.form.get("year")
+        isbn = request.form.get("isbn")
+        language = request.form.get("language")
+        category = request.form.get("category")
+
+        if not title:
+            return apology("must provide a title", 400)
+
+        if profanity.contains_profanity(title) or profanity.contains_profanity(author or ""):
+            return apology("inappropriate content detected", 400)
+
+        db.execute(
+            """INSERT INTO requests (type, user_id, title, author, publisher, year, isbn, language, category, created_at)
+               VALUES ('add_book', ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            session["user_id"], title, author, publisher, year, isbn, language, category,
+            datetime.now().isoformat()
+        )
+
+        flash("Solicitud enviada. Un administrador debe aprobarla.")
+        return redirect("/add_book")
+
+    return render_template("add_book.html")
+
+
+@app.route("/borrow", methods=["POST"])
+@login_required
+def borrow():
+    """Solicita prestar un libro -- queda pendiente hasta que un admin lo apruebe."""
+
+    book_id = request.form.get("book_id")
+    if not book_id:
+        return apology("must select a book", 400)
+
+    book = db.execute("SELECT * FROM books WHERE id = ?", book_id)
+    if len(book) != 1:
+        return apology("book not found", 404)
+    if book[0]["status"] != "available":
+        return apology("book is already borrowed", 400)
+
+    # Evita que se manden dos solicitudes de préstamo pendientes para el mismo libro
+    existing = db.execute(
+        "SELECT id FROM requests WHERE type = 'borrow' AND book_id = ? AND status = 'pending'",
+        book_id
+    )
+    if existing:
+        return apology("this book already has a pending request", 400)
+
+    db.execute(
+        "INSERT INTO requests (type, user_id, book_id, created_at) VALUES ('borrow', ?, ?, ?)",
+        session["user_id"], book_id, datetime.now().isoformat()
+    )
+
+    flash("Solicitud de préstamo enviada. Un administrador debe aprobarla.")
+    return redirect(f"/book/{book_id}")
 
 
 # Columnas permitidas para buscar -- whitelist para evitar SQL injection,
@@ -219,7 +290,7 @@ def book_detail(book_id):
 @app.route("/return_book", methods=["GET", "POST"])
 @login_required
 def return_book():
-    """Return a book the current user has out."""
+    """Solicita devolver un libro -- queda pendiente hasta que un admin lo apruebe."""
 
     if request.method == "POST":
         loan_id = request.form.get("loan_id")
@@ -234,26 +305,112 @@ def return_book():
         if len(loan) != 1:
             return apology("active loan not found", 404)
 
-        db.execute(
-            "UPDATE loans SET returned_at = ? WHERE id = ?",
-            datetime.now().isoformat(), loan_id
+        existing = db.execute(
+            "SELECT id FROM requests WHERE type = 'return' AND loan_id = ? AND status = 'pending'",
+            loan_id
         )
-        db.execute("UPDATE books SET status = 'available' WHERE id = ?", loan[0]["book_id"])
+        if existing:
+            return apology("this loan already has a pending return request", 400)
 
-        flash("Book returned!")
+        db.execute(
+            "INSERT INTO requests (type, user_id, loan_id, book_id, created_at) VALUES ('return', ?, ?, ?, ?)",
+            session["user_id"], loan_id, loan[0]["book_id"], datetime.now().isoformat()
+        )
+
+        flash("Solicitud de devolución enviada. Un administrador debe aprobarla.")
         return redirect("/")
 
-    # Only the current user's currently-out books
     active_loans = db.execute(
         """SELECT loans.id AS loan_id, books.title
            FROM loans JOIN books ON loans.book_id = books.id
            WHERE loans.user_id = ? AND loans.returned_at IS NULL""",
         session["user_id"]
     )
-
-    # FRONTEND: return.html needs a form posting to /return_book with a
-    # select/radio input named "loan_id", populated from `active_loans`
     return render_template("return.html", loans=active_loans)
+
+
+# ---------------------------------------------------------------------------
+# Panel de administrador
+# ---------------------------------------------------------------------------
+@app.route("/admin")
+@login_required
+@admin_required
+def admin_panel():
+    """Muestra todas las solicitudes pendientes para aprobar o rechazar."""
+
+    pending = db.execute(
+        """SELECT requests.*, users.username
+           FROM requests JOIN users ON requests.user_id = users.id
+           WHERE requests.status = 'pending'
+           ORDER BY requests.created_at ASC"""
+    )
+
+    # Para las solicitudes de tipo 'borrow'/'return', trae el título del libro
+    for r in pending:
+        if r["book_id"]:
+            book = db.execute("SELECT title FROM books WHERE id = ?", r["book_id"])
+            r["book_title"] = book[0]["title"] if book else None
+
+    # FRONTEND: admin.html -> loop sobre `pending`, un formulario POST por cada
+    # solicitud, apuntando a /admin/approve/<id> o /admin/reject/<id>
+    return render_template("admin.html", pending=pending)
+
+
+@app.route("/admin/approve/<int:request_id>", methods=["POST"])
+@login_required
+@admin_required
+def admin_approve(request_id):
+    """Aprueba una solicitud y ejecuta la acción real (prestar/devolver/agregar)."""
+
+    req = db.execute("SELECT * FROM requests WHERE id = ? AND status = 'pending'", request_id)
+    if len(req) != 1:
+        return apology("request not found", 404)
+    req = req[0]
+
+    if req["type"] == "borrow":
+        db.execute(
+            "INSERT INTO loans (book_id, user_id, borrowed_at) VALUES (?, ?, ?)",
+            req["book_id"], req["user_id"], datetime.now().isoformat()
+        )
+        db.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", req["book_id"])
+
+    elif req["type"] == "return":
+        db.execute(
+            "UPDATE loans SET returned_at = ? WHERE id = ?",
+            datetime.now().isoformat(), req["loan_id"]
+        )
+        db.execute("UPDATE books SET status = 'available' WHERE id = ?", req["book_id"])
+
+    elif req["type"] == "add_book":
+        db.execute(
+            """INSERT INTO books (title, author, publisher, year, isbn, language, category, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'available')""",
+            req["title"], req["author"], req["publisher"], req["year"],
+            req["isbn"], req["language"], req["category"]
+        )
+
+    db.execute(
+        "UPDATE requests SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?",
+        datetime.now().isoformat(), session["user_id"], request_id
+    )
+
+    flash("Solicitud aprobada.")
+    return redirect("/admin")
+
+
+@app.route("/admin/reject/<int:request_id>", methods=["POST"])
+@login_required
+@admin_required
+def admin_reject(request_id):
+    """Rechaza una solicitud sin ejecutar ninguna acción."""
+
+    db.execute(
+        "UPDATE requests SET status = 'rejected', reviewed_at = ?, reviewed_by = ? WHERE id = ? AND status = 'pending'",
+        datetime.now().isoformat(), session["user_id"], request_id
+    )
+
+    flash("Solicitud rechazada.")
+    return redirect("/admin")
 
 
 @app.route("/history")
@@ -299,6 +456,7 @@ def report():
 
     # FRONTEND: report.html -> two loops, over `most_borrowed` and `currently_out`
     return render_template("report.html", most_borrowed=most_borrowed, currently_out=currently_out)
+
 
 
 def apology(message, code=400):

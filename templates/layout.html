@@ -26,6 +26,9 @@
                         <li class="nav-item"><a class="nav-link" href="/history">Historial</a></li>
                         <li class="nav-item"><a class="nav-link" href="/search">Buscar</a></li>
                         <li class="nav-item"><a class="nav-link" href="/add_book">Añadir Libro</a></li>
+                        {% if session["is_admin"] %}
+                            <li class="nav-item"><a class="nav-link" href="/admin">Admin</a></li>
+                        {% endif %}
                     </ul>
                     <ul class="navbar-nav ms-auto mt-2">
                         <li class="nav-item"><a class="nav-link" href="/logout">Cerrar sesión</a></li>
