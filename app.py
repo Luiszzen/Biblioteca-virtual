@@ -206,39 +206,14 @@ def search_live():
     )
     return jsonify(books)
 
-@app.route("/borrow", methods=["GET", "POST"])
-@login_required
-def borrow():
-    """Borrow an available book."""
+@app.route("/book/<int:book_id>")
+def book_detail(book_id):
+    book = db.execute("SELECT * FROM books WHERE id = ?", book_id)
 
-    if request.method == "POST":
-        book_id = request.form.get("book_id")
+    if len(book) != 1:
+        return apology("book not found", 404)
 
-        if not book_id:
-            return apology("must select a book", 400)
-
-        book = db.execute("SELECT * FROM books WHERE id = ?", book_id)
-        if len(book) != 1:
-            return apology("book not found", 404)
-        if book[0]["status"] != "available":
-            return apology("book is already borrowed", 400)
-
-        # Record the loan and flip the book's status
-        db.execute(
-            "INSERT INTO loans (book_id, user_id, borrowed_at) VALUES (?, ?, ?)",
-            book_id, session["user_id"], datetime.now().isoformat()
-        )
-        db.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", book_id)
-
-        flash("Book borrowed!")
-        return redirect("/")
-
-    # Only offer books that are actually available
-    available_books = db.execute("SELECT id, title, author FROM books WHERE status = 'available'")
-
-    # FRONTEND: borrow.html needs a form posting to /borrow with a select
-    # or radio input named "book_id", populated from `available_books`
-    return render_template("borrow.html", books=available_books)
+    return render_template("book_detail.html", book=book[0])
 
 
 @app.route("/return_book", methods=["GET", "POST"])
@@ -324,38 +299,6 @@ def report():
 
     # FRONTEND: report.html -> two loops, over `most_borrowed` and `currently_out`
     return render_template("report.html", most_borrowed=most_borrowed, currently_out=currently_out)
-
-
-@app.route("/review", methods=["GET", "POST"])
-@login_required
-def review():
-    """Leave a text review/comment on a book."""
-
-    if request.method == "POST":
-        book_id = request.form.get("book_id")
-        comment = request.form.get("comment")
-
-        if not book_id or not comment:
-            return apology("must provide a book and a comment", 400)
-
-        # Filter profanity out of reviews rather than rejecting outright
-        clean_comment = profanity.censor(comment)
-
-        # NOTE: this needs a `reviews` table (book_id, user_id, comment, created_at)
-        # that isn't in schema.sql yet -- add it if you want reviews to persist.
-        db.execute(
-            "INSERT INTO reviews (book_id, user_id, comment, created_at) VALUES (?, ?, ?, ?)",
-            book_id, session["user_id"], clean_comment, datetime.now().isoformat()
-        )
-
-        flash("Review submitted!")
-        return redirect("/review")
-
-    books = db.execute("SELECT id, title FROM books ORDER BY title")
-
-    # FRONTEND: review.html needs a form posting to /review with a select
-    # named "book_id" (from `books`) and a textarea named "comment"
-    return render_template("review.html", books=books)
 
 
 def apology(message, code=400):

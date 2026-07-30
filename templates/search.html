@@ -54,11 +54,22 @@
 
 {% if books %}
     <h3>Resultados</h3>
-    <ul>
+    <ul class="list-group">
         {% for book in books %}
-            <li>
-                <strong>{{ book.title }}</strong> - {{ book.author }}
-                ({{ book.category }}, {{ book.language }}) - Estado: {{ book.status }}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>{{ book.title }}</strong>
+                    Estado:
+                    {% if book.status == "available" %}
+                        Disponible
+                    {% else %}
+                        Prestado
+                    {% endif %}
+                </div>
+
+                <a href="/book/{{ book.id }}" class="btn btn-sm btn-outline-primary">
+                    Ver libro
+                </a>
             </li>
         {% endfor %}
     </ul>

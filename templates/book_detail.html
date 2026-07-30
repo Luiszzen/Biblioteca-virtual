@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Libro
+{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2>{{ book.title }}</h2>
+
+    <ul class="list-group mb-3">
+        <li class="list-group-item"><strong>Autor:</strong> {{ book.author }}</li>
+        <li class="list-group-item"><strong>Editorial:</strong> {{ book.publisher }}</li>
+        <li class="list-group-item"><strong>Año:</strong> {{ book.year }}</li>
+        <li class="list-group-item"><strong>ISBN:</strong> {{ book.isbn }}</li>
+        <li class="list-group-item"><strong>Idioma:</strong> {{ book.language }}</li>
+        <li class="list-group-item"><strong>Categoría:</strong> {{ book.category }}</li>
+        <li class="list-group-item">
+            <strong>Estado:</strong>
+            {% if book.status == "available" %}
+                Disponible
+            {% else %}
+                Prestado
+            {% endif %}
+        </li>
+    </ul>
+
+    {% if session["user_id"] %}
+        {% if book.status == "available" %}
+            <form action="/borrow" method="post">
+                <input type="hidden" name="book_id" value="{{ book.id }}">
+                <button type="submit" class="btn btn-primary">Prestar libro</button>
+            </form>
+        {% else %}
+            <button class="btn btn-secondary" disabled>Libro no disponible</button>
+        {% endif %}
+        
+    {% endif %}
+    
+    <form action="/report" method="post">
+        <input type="hidden" name="book_id" value="{{ book.id }}">
+        <button type="submit" class="btn btn-primary">Reportar libro</button>
+    </form>
+    <a href="/search" class="btn btn-outline-dark mt-3">Volver a búsqueda</a>
+</div>
+{% endblock %}
