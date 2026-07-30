@@ -382,11 +382,23 @@ def admin_approve(request_id):
         db.execute("UPDATE books SET status = 'available' WHERE id = ?", req["book_id"])
 
     elif req["type"] == "add_book":
+        # El admin pudo haber corregido los datos en el formulario de /admin --
+        # si vienen en request.form, se usan esos; si no, se usa lo original de la solicitud
+        title = request.form.get("title") or req["title"]
+        author = request.form.get("author") or req["author"]
+        publisher = request.form.get("publisher") or req["publisher"]
+        year = request.form.get("year") or req["year"]
+        isbn = request.form.get("isbn") or req["isbn"]
+        language = request.form.get("language") or req["language"]
+        category = request.form.get("category") or req["category"]
+
+        if not title:
+            return apology("must provide a title", 400)
+
         db.execute(
             """INSERT INTO books (title, author, publisher, year, isbn, language, category, status)
                VALUES (?, ?, ?, ?, ?, ?, ?, 'available')""",
-            req["title"], req["author"], req["publisher"], req["year"],
-            req["isbn"], req["language"], req["category"]
+            title, author, publisher, year, isbn, language, category
         )
 
     db.execute(
@@ -396,7 +408,6 @@ def admin_approve(request_id):
 
     flash("Solicitud aprobada.")
     return redirect("/admin")
-
 
 @app.route("/admin/reject/<int:request_id>", methods=["POST"])
 @login_required
@@ -411,6 +422,63 @@ def admin_reject(request_id):
 
     flash("Solicitud rechazada.")
     return redirect("/admin")
+
+@app.route("/admin/books")
+@login_required
+@admin_required
+def admin_books():
+    """
+    Vista de admin: todos los libros con su estado, y si están prestados,
+    quién los tiene y hace cuántos días.
+    """
+
+    rows = db.execute(
+        """SELECT books.id, books.title, books.author, books.status,
+                  users.username AS borrowed_by, loans.borrowed_at
+           FROM books
+           LEFT JOIN loans ON loans.book_id = books.id AND loans.returned_at IS NULL
+           LEFT JOIN users ON loans.user_id = users.id
+           ORDER BY books.title"""
+    )
+
+    # Calcula los días prestado en Python (SQLite no tiene un tipo fecha nativo)
+    for row in rows:
+        if row["borrowed_at"]:
+            borrowed_date = datetime.fromisoformat(row["borrowed_at"])
+            row["days_borrowed"] = (datetime.now() - borrowed_date).days
+        else:
+            row["days_borrowed"] = None
+
+    return render_template("admin_books.html", books=rows)
+
+@app.route("/admin/toggle_status/<int:book_id>", methods=["POST"])
+@login_required
+@admin_required
+def admin_toggle_status(book_id):
+    """
+    Cambia manualmente el estado de un libro (available <-> borrowed).
+    Si se marca como disponible, cierra cualquier préstamo activo
+    de ese libro para que la tabla deje de mostrar usuario/días.
+    """
+
+    book = db.execute("SELECT * FROM books WHERE id = ?", book_id)
+    if len(book) != 1:
+        return apology("book not found", 404)
+
+    current_status = book[0]["status"]
+
+    if current_status == "available":
+        db.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", book_id)
+    else:
+        # Vuelve a disponible: cierra el préstamo activo (si existía uno real)
+        db.execute(
+            "UPDATE loans SET returned_at = ? WHERE book_id = ? AND returned_at IS NULL",
+            datetime.now().isoformat(), book_id
+        )
+        db.execute("UPDATE books SET status = 'available' WHERE id = ?", book_id)
+
+    flash("Estado del libro actualizado.")
+    return redirect("/admin/books")
 
 
 @app.route("/history")

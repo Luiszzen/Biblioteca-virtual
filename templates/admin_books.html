@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Admin - Books
+{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2>Todos los libros</h2>
+    <p><a href="/admin">← Volver a solicitudes pendientes</a></p>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Autor</th>
+                <th>Estado</th>
+                <th>Usuario</th>
+                <th>Días prestado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in books %}
+                <tr>
+                    <td>{{ book.title }}</td>
+                    <td>{{ book.author }}</td>
+                    <td>{{ book.status }}</td>
+                    <td>{{ book.borrowed_by or "-" }}</td>
+                    <td>
+                        {% if book.days_borrowed is not none %}
+                            {{ book.days_borrowed }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form action="/admin/toggle_status/{{ book.id }}" method="post">
+                            {% if book.status == "available" %}
+                                <button type="submit" class="btn btn-sm btn-warning">Marcar no disponible</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-sm btn-success">Marcar disponible</button>
+                            {% endif %}
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

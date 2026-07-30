@@ -7,6 +7,7 @@
 {% block main %}
 <div class="container mt-4">
     <h2>Solicitudes pendientes</h2>
+    <p><a href="/admin/books">Ver todos los libros →</a></p>
 
     {% if not pending %}
         <p>No hay solicitudes pendientes.</p>
@@ -19,29 +20,66 @@
                 {% if r.type == "borrow" %}
                     <p><strong>{{ r.username }}</strong> quiere <strong>prestar</strong>: {{ r.book_title }}</p>
 
+                    <form action="/admin/approve/{{ r.id }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-success">Aprobar</button>
+                    </form>
+                    <form action="/admin/reject/{{ r.id }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger">Rechazar</button>
+                    </form>
+
                 {% elif r.type == "return" %}
                     <p><strong>{{ r.username }}</strong> quiere <strong>devolver</strong>: {{ r.book_title }}</p>
 
+                    <form action="/admin/approve/{{ r.id }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-success">Aprobar</button>
+                    </form>
+                    <form action="/admin/reject/{{ r.id }}" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger">Rechazar</button>
+                    </form>
+
                 {% elif r.type == "add_book" %}
-                    <p><strong>{{ r.username }}</strong> quiere <strong>agregar</strong> el libro:</p>
-                    <ul>
-                        <li>Título: {{ r.title }}</li>
-                        <li>Autor: {{ r.author }}</li>
-                        <li>Editorial: {{ r.publisher }}</li>
-                        <li>Año: {{ r.year }}</li>
-                        <li>ISBN: {{ r.isbn }}</li>
-                        <li>Idioma: {{ r.language }}</li>
-                        <li>Categoría: {{ r.category }}</li>
-                    </ul>
+                    <p><strong>{{ r.username }}</strong> quiere <strong>agregar</strong> un libro.
+                       Puedes corregir los datos antes de aprobar:</p>
+
+                    <!-- OJO: este es el mismo <form> que aprueba -- los campos editados
+                         se mandan junto con la aprobación a /admin/approve/{{ r.id }} -->
+                    <form action="/admin/approve/{{ r.id }}" method="post">
+                        <div class="mb-2">
+                            <label>Título</label>
+                            <input class="form-control" type="text" name="title" value="{{ r.title or '' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label>Autor</label>
+                            <input class="form-control" type="text" name="author" value="{{ r.author or '' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label>Editorial</label>
+                            <input class="form-control" type="text" name="publisher" value="{{ r.publisher or '' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label>Año</label>
+                            <input class="form-control" type="number" name="year" value="{{ r.year or '' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label>ISBN</label>
+                            <input class="form-control" type="text" name="isbn" value="{{ r.isbn or '' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label>Idioma</label>
+                            <input class="form-control" type="text" name="language" value="{{ r.language or '' }}">
+                        </div>
+                        <div class="mb-2">
+                            <label>Categoría</label>
+                            <input class="form-control" type="text" name="category" value="{{ r.category or '' }}">
+                        </div>
+
+                        <button type="submit" class="btn btn-success">Aprobar con estos datos</button>
+                    </form>
+                    <form action="/admin/reject/{{ r.id }}" method="post">
+                        <button type="submit" class="btn btn-danger">Rechazar</button>
+                    </form>
+
                 {% endif %}
-
-                <form action="/admin/approve/{{ r.id }}" method="post" style="display:inline;">
-                    <button type="submit" class="btn btn-success">Aprobar</button>
-                </form>
-
-                <form action="/admin/reject/{{ r.id }}" method="post" style="display:inline;">
-                    <button type="submit" class="btn btn-danger">Rechazar</button>
-                </form>
 
             </div>
         </div>
