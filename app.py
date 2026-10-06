@@ -8,14 +8,28 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from better_profanity import profanity
 from datetime import datetime
 
-app = Flask(__name__)
 
+#app = Flask(__name__)
+
+#app.config["SESSION_PERMANENT"] = False
+#app.config["SESSION_TYPE"] = "filesystem"
+#Session(app)
+#profanity.load_censor_words()
+#db = SQL("sqlite:///library.db")
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-solo-local")
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session")
+os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
 Session(app)
-profanity.load_censor_words()
-db = SQL("sqlite:///library.db")
 
+profanity.load_censor_words()
+
+db = SQL("sqlite:///" + os.path.join(BASE_DIR, "library.db"))
 
 @app.after_request
 def after_request(response):
