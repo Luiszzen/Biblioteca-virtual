@@ -1,79 +1,327 @@
-/* Size for brand */
-nav .navbar-brand
-{
-    font-size: xx-large;
+/* ============================================================
+   BIBLIOTECA VIRTUAL — sistema de diseño
+   Paleta: tinta navy + pergamino + bronce (identidad de biblioteca)
+   Tipografía: Fraunces (títulos, serif con carácter) + Source Sans 3 (cuerpo)
+   ============================================================ */
+
+:root {
+    --ink: #1B2A41;          /* navy oscuro -- navbar, texto principal */
+    --ink-soft: #2E4258;     /* navy más claro -- hover, bordes sutiles */
+    --parchment: #F3EEE1;    /* fondo general, tono pergamino */
+    --parchment-light: #FBF9F3;
+    --card-bg: #FFFFFF;
+    --brass: #B08D57;        /* bronce -- acento principal */
+    --brass-dark: #8F7042;
+    --burgundy: #6E1F2A;     /* rojo libro -- peligro / rechazar */
+    --burgundy-dark: #551621;
+    --sage: #4C7A5E;         /* verde salvia -- éxito / disponible */
+    --sage-dark: #3B5F49;
+    --amber: #C68A2E;        /* advertencia */
+
+    --font-display: "Fraunces", "Georgia", serif;
+    --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+
+    --radius: 10px;
+    --shadow-sm: 0 1px 3px rgba(27, 42, 65, 0.08);
+    --shadow-md: 0 6px 20px rgba(27, 42, 65, 0.12);
 }
+
+/* ---------- Base ---------- */
 
 body {
-    padding: 0;
     margin: 0;
-    overflow-x: hidden;
-    position: relative;
+    padding: 0;
     min-height: 100vh;
+    background: var(--parchment);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
 }
 
-.background-img {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
-    opacity: 1;
-    z-index: -1;
-}
-
-/* Hacer que el contenido sea legible sobre la imagen */
 main {
-    position: relative;
-    z-index: 1;
+    display: block;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
 }
 
-
-/* Mejorar visibilidad del texto */
-nav.navbar .navbar-brand {
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
     font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+}
 
+h1 { font-size: 2.4rem; }
+h2 {
+    font-size: 1.7rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+    padding-bottom: 0.5rem;
+}
+
+/* Firma visual: una pequeña regla bicolor bajo cada h2, como un
+   marcapáginas -- se repite en todo el sitio para dar identidad */
+h2::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 46px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brass), var(--burgundy));
+    border-radius: 2px;
+}
+
+a {
+    color: var(--brass-dark);
+    text-decoration: none;
+}
+a:hover {
+    color: var(--burgundy);
+    text-decoration: underline;
+}
+
+/* ---------- Navbar ---------- */
+
+nav.navbar {
+    background: var(--ink) !important;
+    box-shadow: var(--shadow-md);
+    padding: 0.75rem 0;
+}
+
+nav.navbar .navbar-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--parchment-light) !important;
+    letter-spacing: 0.01em;
 }
 
 nav.navbar .nav-link {
-    font-weight: 500;
-    color: black;
-    transition: all 0.3s ease;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: rgba(243, 238, 225, 0.8) !important;
+    padding: 0.4rem 0.85rem !important;
+    border-radius: var(--radius);
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 nav.navbar .nav-link:hover {
-    color: #0d6efd !important;
-    transform: translateY(-2px);
+    color: var(--parchment-light) !important;
+    background: rgba(176, 141, 87, 0.25);
+    text-decoration: none;
 }
 
-.homepage {
-    color: white;
-    font-weight: 500;
-    font-size: 10rem;
+/* ---------- Botones ---------- */
+
+.btn {
+    font-family: var(--font-body);
+    font-weight: 600;
+    border-radius: var(--radius);
+    padding: 0.5rem 1.1rem;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.btn:active { transform: translateY(0); }
+
+.btn-primary {
+    --bs-btn-bg: var(--brass);
+    --bs-btn-border-color: var(--brass);
+    --bs-btn-hover-bg: var(--brass-dark);
+    --bs-btn-hover-border-color: var(--brass-dark);
+    --bs-btn-active-bg: var(--brass-dark);
+    --bs-btn-active-border-color: var(--brass-dark);
+    --bs-btn-disabled-bg: var(--brass);
+    --bs-btn-disabled-border-color: var(--brass);
 }
 
-.card-body {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-    margin-bottom: 2rem;
-    padding: 1rem;
+.btn-outline-primary {
+    --bs-btn-color: var(--brass-dark);
+    --bs-btn-border-color: var(--brass);
+    --bs-btn-hover-bg: var(--brass);
+    --bs-btn-hover-border-color: var(--brass);
 }
 
-textarea, input, select {
+.btn-success {
+    --bs-btn-bg: var(--sage);
+    --bs-btn-border-color: var(--sage);
+    --bs-btn-hover-bg: var(--sage-dark);
+    --bs-btn-hover-border-color: var(--sage-dark);
+    --bs-btn-active-bg: var(--sage-dark);
+}
+
+.btn-danger {
+    --bs-btn-bg: var(--burgundy);
+    --bs-btn-border-color: var(--burgundy);
+    --bs-btn-hover-bg: var(--burgundy-dark);
+    --bs-btn-hover-border-color: var(--burgundy-dark);
+    --bs-btn-active-bg: var(--burgundy-dark);
+}
+
+.btn-warning {
+    --bs-btn-bg: var(--amber);
+    --bs-btn-border-color: var(--amber);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #a86f22;
+    --bs-btn-hover-border-color: #a86f22;
+}
+
+.btn-outline-dark {
+    --bs-btn-color: var(--ink);
+    --bs-btn-border-color: var(--ink);
+    --bs-btn-hover-bg: var(--ink);
+    --bs-btn-hover-border-color: var(--ink);
+}
+
+.btn-secondary {
+    --bs-btn-bg: #8A8578;
+    --bs-btn-border-color: #8A8578;
+}
+
+/* ---------- Tarjetas ---------- */
+
+.card, .card-body {
+    background: var(--card-bg) !important;
+    border: none;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.card {
+    border-left: 4px solid var(--brass);
+    margin-bottom: 1.25rem;
+    backdrop-filter: none;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* ---------- Formularios ---------- */
+
+label, .form-label {
+    font-weight: 600;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+textarea, input, select, .form-control {
     width: 100%;
-    padding: 15px;
-    font-size: 16px;
-    color: black;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 15px;
+    padding: 0.65rem 0.9rem;
+    font-size: 1rem;
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: var(--parchment-light);
+    border: 1px solid rgba(27, 42, 65, 0.18);
+    border-radius: var(--radius);
+    box-sizing: border-box;
 }
 
-/* Efecto al enfocar */
-textarea:focus {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+textarea:focus, input:focus, select:focus, .form-control:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.25);
+}
+
+form {
+    max-width: 480px;
+}
+form.row, .container form {
+    max-width: none;
+}
+
+/* ---------- Tablas ---------- */
+
+.table {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.table thead, .table-light {
+    background: var(--ink) !important;
+}
+.table thead th {
+    color: var(--parchment-light) !important;
+    font-family: var(--font-body);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    border: none;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(176, 141, 87, 0.06);
+}
+
+/* ---------- Listas ---------- */
+
+.list-group-item {
+    border-color: rgba(27, 42, 65, 0.1);
+    background: var(--card-bg);
+    padding: 0.75rem 1rem;
+}
+
+/* ---------- Badges / estados ---------- */
+
+.badge.bg-success {
+    background-color: var(--sage) !important;
+}
+.badge.bg-warning {
+    background-color: var(--amber) !important;
+    color: #fff !important;
+}
+
+/* ---------- Alertas ---------- */
+
+.alert {
+    border: none;
+    border-radius: var(--radius);
+    border-left: 4px solid transparent;
+    font-weight: 500;
+}
+.alert-danger {
+    background: #FBEAE9;
+    color: var(--burgundy-dark);
+    border-left-color: var(--burgundy);
+}
+.alert-info {
+    background: #EAF1EC;
+    color: var(--sage-dark);
+    border-left-color: var(--sage);
+}
+
+/* ---------- Pantalla de bienvenida (index sin sesión) ---------- */
+
+.text-center.mt-5 h1 {
+    font-size: 2.6rem;
+    margin-bottom: 0.5rem;
+}
+.text-center.mt-5 p {
+    color: var(--ink-soft);
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 576px) {
+    main { padding: 1.25rem 1rem 3rem; }
+    h1 { font-size: 1.9rem; }
+    nav.navbar .navbar-brand { font-size: 1.25rem; }
+}
+
+/* ---------- Accesibilidad: foco visible ---------- */
+
+a:focus-visible, button:focus-visible, .btn:focus-visible {
+    outline: 3px solid var(--brass);
+    outline-offset: 2px;
 }
