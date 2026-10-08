@@ -31,6 +31,19 @@ profanity.load_censor_words()
 
 db = SQL("sqlite:///" + os.path.join(BASE_DIR, "library.db"))
 
+TURNOS = {"manana": "Mañana", "tarde": "Tarde"}
+GRADOS = ["1", "2", "3", "4", "5", "6"]
+SECCIONES = ["A", "B", "C"]
+
+
+def render_register():
+    """Muestra el formulario de registro con las opciones de perfil."""
+    return render_template(
+        "register.html",
+        turnos=TURNOS, grados=GRADOS, secciones=SECCIONES, form=request.form,
+    )
+
+
 @app.after_request
 def after_request(response):
     """Ensure responses aren't cached"""
@@ -108,70 +121,53 @@ def logout():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Register a new user."""
-
+    """Registra un usuario nuevo (no admin) con su perfil escolar."""
     if request.method == "GET":
-        return render_template("register.html")
+        return render_register()
 
-    username = request.form.get("username")
+    username = (request.form.get("username") or "").strip()
+    full_name = (request.form.get("full_name") or "").strip()
     password = request.form.get("password")
     confirmation = request.form.get("confirmation")
+    turno = request.form.get("turno")
+    grado = request.form.get("grado")
+    seccion = request.form.get("seccion")
 
     if not username:
-        flash("must provide username")
-        return render_template("register.html")
+        flash("Escribe un nombre de usuario.")
+        return render_register()
+    if not full_name:
+        flash("Escribe tus nombres y apellidos.")
+        return render_register()
     if not password:
-        flash("must provide password")
-        return render_template("register.html")
+        flash("Escribe una contraseña.")
+        return render_register()
     if password != confirmation:
-        flash("passwords must match")
-        return render_template("register.html")
+        flash("Las contraseñas no coinciden.")
+        return render_register()
+    if turno not in TURNOS or grado not in GRADOS or seccion not in SECCIONES:
+        flash("Elige tu turno, grado y sección.")
+        return render_register()
 
-    existing = db.execute("SELECT username FROM users WHERE username = ?", username)
-    if existing:
-        flash("that username is already taken")
-        return render_template("register.html")
+    if db.execute("SELECT id FROM users WHERE username = ?", username):
+        flash("Ese nombre de usuario ya está en uso.")
+        return render_register()
 
-    password_hashed = generate_password_hash(password)
-    db.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, password_hashed)
+    try:
+        user_id = db.execute(
+            """INSERT INTO users (username, hash, full_name, turno, grado, seccion)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            username, generate_password_hash(password), full_name, turno, int(grado), seccion,
+        )
+    except ValueError:
+        # Dos registros con el mismo usuario al mismo tiempo
+        flash("Ese nombre de usuario ya está en uso.")
+        return render_register()
 
-    new_user = db.execute("SELECT * FROM users WHERE username = ?", username)
-    session["user_id"] = new_user[0]["id"]
-
+    session["user_id"] = user_id
+    session["is_admin"] = False
     return redirect("/")
 
-
-
-    """Add a new book to the catalog."""
-
-    if request.method == "POST":
-        title = request.form.get("title")
-        author = request.form.get("author")
-        publisher = request.form.get("publisher")
-        year = request.form.get("year")
-        isbn = request.form.get("isbn")
-        language = request.form.get("language")
-        category = request.form.get("category")
-
-        if not title:
-            return apology("must provide a title", 400)
-
-        # Block offensive titles/authors before they hit the catalog
-        if profanity.contains_profanity(title) or profanity.contains_profanity(author or ""):
-            return apology("inappropriate content detected", 400)
-
-        db.execute(
-            """INSERT INTO books (title, author, publisher, year, isbn, language, category, status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'available')""",
-            title, author, publisher, year, isbn, language, category
-        )
-
-        flash("Book added!")
-        return redirect("/add_book")
-
-    # FRONTEND: add_book.html needs a form posting to /add_book with fields
-    # named "title", "author", "publisher", "year", "isbn", "language", "category"
-    return render_template("add_book.html")
 
 
 @app.route("/add_book", methods=["GET", "POST"])
@@ -301,46 +297,7 @@ def book_detail(book_id):
     return render_template("book_detail.html", book=book[0])
 
 
-@app.route("/return_book", methods=["GET", "POST"])
-@login_required
-def return_book():
-    """Solicita devolver un libro -- queda pendiente hasta que un admin lo apruebe."""
 
-    if request.method == "POST":
-        loan_id = request.form.get("loan_id")
-
-        if not loan_id:
-            return apology("must select a loan", 400)
-
-        loan = db.execute(
-            "SELECT * FROM loans WHERE id = ? AND user_id = ? AND returned_at IS NULL",
-            loan_id, session["user_id"]
-        )
-        if len(loan) != 1:
-            return apology("active loan not found", 404)
-
-        existing = db.execute(
-            "SELECT id FROM requests WHERE type = 'return' AND loan_id = ? AND status = 'pending'",
-            loan_id
-        )
-        if existing:
-            return apology("this loan already has a pending return request", 400)
-
-        db.execute(
-            "INSERT INTO requests (type, user_id, loan_id, book_id, created_at) VALUES ('return', ?, ?, ?, ?)",
-            session["user_id"], loan_id, loan[0]["book_id"], datetime.now().isoformat()
-        )
-
-        flash("Solicitud de devolución enviada. Un administrador debe aprobarla.")
-        return redirect("/")
-
-    active_loans = db.execute(
-        """SELECT loans.id AS loan_id, books.title
-           FROM loans JOIN books ON loans.book_id = books.id
-           WHERE loans.user_id = ? AND loans.returned_at IS NULL""",
-        session["user_id"]
-    )
-    return render_template("return.html", loans=active_loans)
 
 
 # ---------------------------------------------------------------------------
@@ -387,13 +344,6 @@ def admin_approve(request_id):
             req["book_id"], req["user_id"], datetime.now().isoformat()
         )
         db.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", req["book_id"])
-
-    elif req["type"] == "return":
-        db.execute(
-            "UPDATE loans SET returned_at = ? WHERE id = ?",
-            datetime.now().isoformat(), req["loan_id"]
-        )
-        db.execute("UPDATE books SET status = 'available' WHERE id = ?", req["book_id"])
 
     elif req["type"] == "add_book":
         # El admin pudo haber corregido los datos en el formulario de /admin --
@@ -498,7 +448,7 @@ def admin_toggle_status(book_id):
 @app.route("/history")
 @login_required
 def history():
-    """Show the current user's full borrow history."""
+    """Historial del usuario: sus solicitudes y sus préstamos."""
 
     loans = db.execute(
         """SELECT books.title, loans.borrowed_at, loans.returned_at
@@ -508,12 +458,18 @@ def history():
         session["user_id"]
     )
 
-    # FRONTEND: history.html -> loop over `loans`, e.g.
-    #     {% for loan in loans %}
-    #         <p>{{ loan.title }} - borrowed {{ loan.borrowed_at }}
-    #            {% if loan.returned_at %}(returned {{ loan.returned_at }}){% endif %}</p>
-    #     {% endfor %}
-    return render_template("history.html", loans=loans)
+    # Solicitudes del propio usuario (préstamo o agregar libro), de la más nueva a la más antigua.
+    # Para 'borrow' el título viene del libro; para 'add_book' viene de la propia solicitud.
+    my_requests = db.execute(
+        """SELECT requests.type, requests.status, requests.created_at,
+                  COALESCE(books.title, requests.title) AS title
+           FROM requests LEFT JOIN books ON requests.book_id = books.id
+           WHERE requests.user_id = ? AND requests.type IN ('borrow', 'add_book')
+           ORDER BY requests.created_at DESC""",
+        session["user_id"]
+    )
+
+    return render_template("history.html", loans=loans, my_requests=my_requests)
 
 
 @app.route("/report")

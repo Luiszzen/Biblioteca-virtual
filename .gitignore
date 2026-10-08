@@ -3,3 +3,4 @@ flask_session/
 library.db
 .venv*/
 .env
+*.bak

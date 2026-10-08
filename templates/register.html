@@ -1,30 +1,60 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Register
+    Registro
 {% endblock %}
 
 
 {% block main %}
 
     <form action="/register" method="post">
- 
-        <!-- name="username", "password" y "confirmation" deben coincidir EXACTO
-             con request.form.get(...) en la ruta /register de app.py -->
+
+        <!-- Los name="..." deben coincidir EXACTO con request.form.get(...) en la ruta /register de app.py -->
         <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Username" type="text">
+            <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Usuario" required type="text" value="{{ form.get('username', '') }}">
         </div>
- 
+
         <div class="mb-3">
-            <input class="form-control" name="password" placeholder="Password" type="password">
+            <input autocomplete="off" class="form-control" name="full_name" placeholder="Nombres y apellidos" required type="text" value="{{ form.get('full_name', '') }}">
         </div>
- 
+
         <div class="mb-3">
-            <input class="form-control" name="confirmation" placeholder="Confirm Password" type="password">
+            <select class="form-select" name="turno" required>
+                <option value="" disabled {% if not form.get('turno') %}selected{% endif %}>Turno</option>
+                {% for value, label in turnos.items() %}
+                    <option value="{{ value }}" {% if form.get('turno') == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
         </div>
- 
-        <button class="btn btn-primary" type="submit">Register</button>
- 
+
+        <div class="mb-3">
+            <select class="form-select" name="grado" required>
+                <option value="" disabled {% if not form.get('grado') %}selected{% endif %}>Grado</option>
+                {% for g in grados %}
+                    <option value="{{ g }}" {% if form.get('grado') == g %}selected{% endif %}>{{ g }}°</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <select class="form-select" name="seccion" required>
+                <option value="" disabled {% if not form.get('seccion') %}selected{% endif %}>Sección</option>
+                {% for s in secciones %}
+                    <option value="{{ s }}" {% if form.get('seccion') == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <input class="form-control" name="password" placeholder="Contraseña" required type="password">
+        </div>
+
+        <div class="mb-3">
+            <input class="form-control" name="confirmation" placeholder="Confirmar contraseña" required type="password">
+        </div>
+
+        <button class="btn btn-primary" type="submit">Registrarse</button>
+
     </form>
 
 {% endblock %}

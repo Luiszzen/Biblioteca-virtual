@@ -27,16 +27,6 @@
                         <button type="submit" class="btn btn-danger">Rechazar</button>
                     </form>
 
-                {% elif r.type == "return" %}
-                    <p><strong>{{ r.username }}</strong> quiere <strong>devolver</strong>: {{ r.book_title }}</p>
-
-                    <form action="/admin/approve/{{ r.id }}" method="post" style="display:inline;">
-                        <button type="submit" class="btn btn-success">Aprobar</button>
-                    </form>
-                    <form action="/admin/reject/{{ r.id }}" method="post" style="display:inline;">
-                        <button type="submit" class="btn btn-danger">Rechazar</button>
-                    </form>
-
                 {% elif r.type == "add_book" %}
                     <p><strong>{{ r.username }}</strong> quiere <strong>agregar</strong> un libro.
                        Puedes corregir los datos antes de aprobar:</p>
