@@ -1,8 +1,15 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Apology
+    Error
 {% endblock %}
 
 {% block main %}
+<div class="container mt-4">
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">Error {{ code }}</h4>
+        <p class="mb-0">{{ message }}</p>
+    </div>
+    <a href="/" class="btn btn-outline-dark">Volver al inicio</a>
+</div>
 {% endblock %}

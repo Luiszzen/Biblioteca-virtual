@@ -1,12 +1,14 @@
 import os
+import hmac
 from functools import wraps
 
 from cs50 import SQL
 from flask import Flask, flash, jsonify, redirect, render_template, request, session
 from flask_session import Session
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 from better_profanity import profanity
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 #app = Flask(__name__)
@@ -21,6 +23,21 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-solo-local")
+
+#seguridad
+PRODUCTION = os.environ.get("PRODUCTION") == "1"
+if PRODUCTION and not os.environ.get("SECRET_KEY"):
+    raise RuntimeError("Falta SECRET_KEY en producción: defínela en el archivo WSGI.")
+
+#Si no está definido, el registro queda abierto.
+REGISTRATION_CODE = os.environ.get("REGISTRATION_CODE", "")
+
+app.config["SESSION_COOKIE_SECURE"] = PRODUCTION      #la cookie  por HTTPS
+app.config["SESSION_COOKIE_HTTPONLY"] = True          # js no puede leerla
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"         #no se envía desde otros sitios en POST
+app.config["WTF_CSRF_TIME_LIMIT"] = None              # el token dura lo que dura la sesión
+csrf = CSRFProtect(app)                               # exige token CSRF en todo POST
+
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session")
@@ -41,6 +58,7 @@ def render_register():
     return render_template(
         "register.html",
         turnos=TURNOS, grados=GRADOS, secciones=SECCIONES, form=request.form,
+        require_code=bool(REGISTRATION_CODE),
     )
 
 
@@ -50,7 +68,17 @@ def after_request(response):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Expires"] = 0
     response.headers["Pragma"] = "no-cache"
+    # Cabeceras de seguridad
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
+
+
+@app.errorhandler(CSRFError)
+def csrf_error(error):
+    """Formulario sin token válido (sesión vencida o intento de falsificación)."""
+    return apology("Tu sesión venció o el formulario no es válido. Recarga la página e inténtalo otra vez.", 400)
 
 
 def login_required(f):
@@ -81,6 +109,20 @@ def index():
     """Homepage informativa, sin lógica de libros."""
     return render_template("index.html")
 
+MAX_LOGIN_FAILURES = 5
+LOGIN_WINDOW_MINUTES = 15
+
+
+def recent_login_failures(username):
+    """Cuenta los intentos fallidos de ese usuario en los últimos 15 minutos."""
+    cutoff = (datetime.now() - timedelta(minutes=LOGIN_WINDOW_MINUTES)).isoformat()
+    rows = db.execute(
+        "SELECT COUNT(*) AS n FROM login_attempts WHERE username = ? AND attempted_at > ?",
+        username, cutoff
+    )
+    return rows[0]["n"]
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Log user in."""
@@ -89,7 +131,7 @@ def login():
 
     if request.method == "POST":
         username = request.form.get("username")
-        password = request.form.get("password")   # <- esto faltaba
+        password = request.form.get("password")
 
         if not username:
             flash("must provide username")
@@ -99,12 +141,30 @@ def login():
             flash("must provide password")
             return render_template("login.html")
 
+        attempt_name = username.strip().lower()[:100]
+
+        # Demasiados fallos recientes: se bloquea aunque la contraseña sea correcta
+        if recent_login_failures(attempt_name) >= MAX_LOGIN_FAILURES:
+            flash("Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.")
+            return render_template("login.html"), 429
+
         rows = db.execute("SELECT * FROM users WHERE username = ?", username)
 
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], password):
+            now = datetime.now()
+            db.execute(
+                "INSERT INTO login_attempts (username, attempted_at) VALUES (?, ?)",
+                attempt_name, now.isoformat()
+            )
+            # Limpieza: borra intentos de hace más de un día
+            db.execute(
+                "DELETE FROM login_attempts WHERE attempted_at < ?",
+                (now - timedelta(days=1)).isoformat()
+            )
             flash("invalid username and/or password")
             return render_template("login.html")
 
+        db.execute("DELETE FROM login_attempts WHERE username = ?", attempt_name)
         session["user_id"] = rows[0]["id"]
         session["is_admin"] = bool(rows[0]["is_admin"])
         return redirect("/")
@@ -133,6 +193,12 @@ def register():
     grado = request.form.get("grado")
     seccion = request.form.get("seccion")
 
+    if REGISTRATION_CODE:
+        given_code = request.form.get("registration_code") or ""
+        if not hmac.compare_digest(given_code.encode(), REGISTRATION_CODE.encode()):
+            flash("Código de registro incorrecto. Pídelo en la biblioteca.")
+            return render_register()
+
     if not username:
         flash("Escribe un nombre de usuario.")
         return render_register()
@@ -144,6 +210,9 @@ def register():
         return render_register()
     if password != confirmation:
         flash("Las contraseñas no coinciden.")
+        return render_register()
+    if len(password) < 6:
+        flash("La contraseña debe tener al menos 6 caracteres.")
         return render_register()
     if turno not in TURNOS or grado not in GRADOS or seccion not in SECCIONES:
         flash("Elige tu turno, grado y sección.")
@@ -386,19 +455,45 @@ def admin_panel():
 @login_required
 @admin_required
 def admin_approve(request_id):
-    """Aprueba una solicitud y ejecuta la acción real (prestar/devolver/agregar)."""
+    """Aprueba una solicitud y ejecuta la acción real (prestar o agregar libro)."""
 
     req = db.execute("SELECT * FROM requests WHERE id = ? AND status = 'pending'", request_id)
     if len(req) != 1:
         return apology("request not found", 404)
     req = req[0]
 
+    now = datetime.now().isoformat()
+
     if req["type"] == "borrow":
-        db.execute(
-            "INSERT INTO loans (book_id, user_id, borrowed_at) VALUES (?, ?, ?)",
-            req["book_id"], req["user_id"], datetime.now().isoformat()
-        )
-        db.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", req["book_id"])
+        # Todo o nada: si algo falla a la mitad, no queda un libro "prestado" sin préstamo.
+        db.execute("BEGIN")
+        try:
+            # Solo se presta si el libro SIGUE disponible (evita préstamos dobles)
+            taken = db.execute(
+                "UPDATE books SET status = 'borrowed' WHERE id = ? AND status = 'available'",
+                req["book_id"]
+            )
+            if taken != 1:
+                db.execute("ROLLBACK")
+                db.execute(
+                    "UPDATE requests SET status = 'rejected', reviewed_at = ?, reviewed_by = ? WHERE id = ?",
+                    now, session["user_id"], request_id
+                )
+                flash("Ese libro ya no está disponible. La solicitud se rechazó automáticamente.")
+                return redirect("/admin")
+
+            db.execute(
+                "INSERT INTO loans (book_id, user_id, borrowed_at) VALUES (?, ?, ?)",
+                req["book_id"], req["user_id"], now
+            )
+            db.execute(
+                "UPDATE requests SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?",
+                now, session["user_id"], request_id
+            )
+            db.execute("COMMIT")
+        except Exception:
+            db.execute("ROLLBACK")
+            raise
 
     elif req["type"] == "add_book":
         # El admin pudo haber corregido los datos en el formulario de /admin --
@@ -414,19 +509,25 @@ def admin_approve(request_id):
         if not title:
             return apology("must provide a title", 400)
 
-        db.execute(
-            """INSERT INTO books (title, author, publisher, year, isbn, language, category, status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'available')""",
-            title, author, publisher, year, isbn, language, category
-        )
-
-    db.execute(
-        "UPDATE requests SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?",
-        datetime.now().isoformat(), session["user_id"], request_id
-    )
+        db.execute("BEGIN")
+        try:
+            db.execute(
+                """INSERT INTO books (title, author, publisher, year, isbn, language, category, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 'available')""",
+                title, author, publisher, year, isbn, language, category
+            )
+            db.execute(
+                "UPDATE requests SET status = 'approved', reviewed_at = ?, reviewed_by = ? WHERE id = ?",
+                now, session["user_id"], request_id
+            )
+            db.execute("COMMIT")
+        except Exception:
+            db.execute("ROLLBACK")
+            raise
 
     flash("Solicitud aprobada.")
     return redirect("/admin")
+
 
 @app.route("/admin/reject/<int:request_id>", methods=["POST"])
 @login_required
