@@ -1,5 +1,4 @@
 import os
-import hmac
 from functools import wraps
 
 from cs50 import SQL
@@ -29,9 +28,6 @@ PRODUCTION = os.environ.get("PRODUCTION") == "1"
 if PRODUCTION and not os.environ.get("SECRET_KEY"):
     raise RuntimeError("Falta SECRET_KEY en producción: defínela en el archivo WSGI.")
 
-#Si no está definido, el registro queda abierto.
-REGISTRATION_CODE = os.environ.get("REGISTRATION_CODE", "")
-
 app.config["SESSION_COOKIE_SECURE"] = PRODUCTION      #la cookie  por HTTPS
 app.config["SESSION_COOKIE_HTTPONLY"] = True          # js no puede leerla
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"         #no se envía desde otros sitios en POST
@@ -58,7 +54,6 @@ def render_register():
     return render_template(
         "register.html",
         turnos=TURNOS, grados=GRADOS, secciones=SECCIONES, form=request.form,
-        require_code=bool(REGISTRATION_CODE),
     )
 
 
@@ -192,12 +187,6 @@ def register():
     turno = request.form.get("turno")
     grado = request.form.get("grado")
     seccion = request.form.get("seccion")
-
-    if REGISTRATION_CODE:
-        given_code = request.form.get("registration_code") or ""
-        if not hmac.compare_digest(given_code.encode(), REGISTRATION_CODE.encode()):
-            flash("Código de registro incorrecto. Pídelo en la biblioteca.")
-            return render_register()
 
     if not username:
         flash("Escribe un nombre de usuario.")
