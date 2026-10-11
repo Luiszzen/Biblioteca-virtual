@@ -236,6 +236,60 @@ def borrow():
 
 
 # Columnas permitidas para buscar -- whitelist para evitar SQL injection,
+
+# Motivos permitidos para reportar un libro (clave interna -> texto visible)
+REPORT_REASONS = {
+    "damaged": "Libro dañado",
+    "missing": "Libro perdido o no está en su lugar",
+    "wrong_info": "Datos incorrectos (título, autor, etc.)",
+    "other": "Otro",
+}
+
+
+@app.route("/report_book", methods=["POST"])
+@login_required
+def report_book():
+    """El usuario reporta un problema con un libro; un admin lo revisa después."""
+
+    book_id = request.form.get("book_id")
+    reason = request.form.get("reason")
+    details = (request.form.get("details") or "").strip()
+
+    book = db.execute("SELECT id FROM books WHERE id = ?", book_id)
+    if len(book) != 1:
+        return apology("book not found", 404)
+    book_id = book[0]["id"]
+
+    if reason not in REPORT_REASONS:
+        flash("Elige el motivo del reporte.")
+        return redirect(f"/book/{book_id}")
+
+    if len(details) > 500:
+        flash("El detalle es muy largo (máximo 500 caracteres).")
+        return redirect(f"/book/{book_id}")
+
+    if profanity.contains_profanity(details):
+        flash("El detalle contiene lenguaje inapropiado.")
+        return redirect(f"/book/{book_id}")
+
+    # Evita que el mismo usuario mande el mismo reporte varias veces mientras sigue abierto
+    existing = db.execute(
+        "SELECT id FROM book_reports WHERE book_id = ? AND user_id = ? AND status = 'open'",
+        book_id, session["user_id"]
+    )
+    if existing:
+        flash("Ya reportaste este libro. Un administrador lo está revisando.")
+        return redirect(f"/book/{book_id}")
+
+    db.execute(
+        """INSERT INTO book_reports (book_id, user_id, reason, details, created_at)
+           VALUES (?, ?, ?, ?, ?)""",
+        book_id, session["user_id"], reason, details or None, datetime.now().isoformat()
+    )
+
+    flash("Reporte enviado. Gracias por avisar.")
+    return redirect(f"/book/{book_id}")
+
 # ya que el nombre de columna no se puede parametrizar con "?"
 SEARCH_COLUMNS = {
     "title": "title",
@@ -294,8 +348,7 @@ def book_detail(book_id):
     if len(book) != 1:
         return apology("book not found", 404)
 
-    return render_template("book_detail.html", book=book[0])
-
+    return render_template("book_detail.html", book=book[0], reasons=REPORT_REASONS)
 
 
 
@@ -324,7 +377,9 @@ def admin_panel():
 
     # FRONTEND: admin.html -> loop sobre `pending`, un formulario POST por cada
     # solicitud, apuntando a /admin/approve/<id> o /admin/reject/<id>
-    return render_template("admin.html", pending=pending)
+    open_reports = db.execute("SELECT COUNT(*) AS n FROM book_reports WHERE status = 'open'")[0]["n"]
+
+    return render_template("admin.html", pending=pending, open_reports=open_reports)
 
 
 @app.route("/admin/approve/<int:request_id>", methods=["POST"])
@@ -444,6 +499,38 @@ def admin_toggle_status(book_id):
     flash("Estado del libro actualizado.")
     return redirect("/admin/books")
 
+@app.route("/admin/reports")
+@login_required
+@admin_required
+def admin_reports():
+    """Lista los reportes de libros: primero los abiertos, luego los resueltos."""
+
+    reports = db.execute(
+        """SELECT book_reports.id, book_reports.reason, book_reports.details,
+                  book_reports.status, book_reports.created_at, book_reports.resolved_at,
+                  books.id AS book_id, books.title,
+                  users.username, users.full_name, users.turno, users.grado, users.seccion
+           FROM book_reports
+           JOIN books ON book_reports.book_id = books.id
+           JOIN users ON book_reports.user_id = users.id
+           ORDER BY (book_reports.status = 'open') DESC, book_reports.created_at DESC
+           LIMIT 200"""
+    )
+    return render_template("admin_reports.html", reports=reports, reasons=REPORT_REASONS)
+
+
+@app.route("/admin/reports/resolve/<int:report_id>", methods=["POST"])
+@login_required
+@admin_required
+def admin_resolve_report(report_id):
+    """Marca un reporte como resuelto."""
+
+    db.execute(
+        "UPDATE book_reports SET status = 'resolved', resolved_at = ?, resolved_by = ? WHERE id = ? AND status = 'open'",
+        datetime.now().isoformat(), session["user_id"], report_id
+    )
+    flash("Reporte marcado como resuelto.")
+    return redirect("/admin/reports")
 
 @app.route("/history")
 @login_required
@@ -474,6 +561,7 @@ def history():
 
 @app.route("/report")
 @login_required
+@admin_required
 def report():
     """Simple stats: most-borrowed books and currently overdue-looking loans."""
 

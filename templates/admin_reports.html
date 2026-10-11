@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Admin - Reportes
+{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2>Reportes de libros</h2>
+    <p><a href="/admin">← Volver a solicitudes pendientes</a></p>
+
+    {% if not reports %}
+        <div class="alert alert-info">No hay reportes.</div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Libro</th>
+                        <th>Motivo</th>
+                        <th>Detalle</th>
+                        <th>Reportado por</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in reports %}
+                        <tr>
+                            <td><a href="/book/{{ r.book_id }}">{{ r.title }}</a></td>
+                            <td>{{ reasons.get(r.reason, r.reason) }}</td>
+                            <td>{{ r.details or "—" }}</td>
+                            <td>
+                                {{ r.full_name or r.username }}
+                                {% if r.grado %}
+                                    <br><small class="text-muted">{{ r.grado }}° {{ r.seccion }}{% if r.turno %} · {{ "Mañana" if r.turno == "manana" else "Tarde" }}{% endif %}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ r.created_at[:16].replace("T", " ") }}</td>
+                            <td>
+                                {% if r.status == "open" %}
+                                    <span class="badge bg-warning text-dark mb-1">Abierto</span>
+                                    <form action="/admin/reports/resolve/{{ r.id }}" method="post">
+                                        <button type="submit" class="btn btn-sm btn-success">Marcar resuelto</button>
+                                    </form>
+                                {% else %}
+                                    <span class="badge bg-success">Resuelto</span>
+                                    <br><small class="text-muted">{{ r.resolved_at[:16].replace("T", " ") }}</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

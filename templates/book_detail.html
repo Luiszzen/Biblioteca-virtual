@@ -34,13 +34,36 @@
         {% else %}
             <button class="btn btn-secondary" disabled>Libro no disponible</button>
         {% endif %}
-        
     {% endif %}
-    
-    <form action="/report" method="post">
-        <input type="hidden" name="book_id" value="{{ book.id }}">
-        <button type="submit" class="btn btn-primary">Reportar libro</button>
-    </form>
+
+    {% if session["user_id"] %}
+        <button class="btn btn-outline-danger mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#reportForm">
+            Reportar un problema con este libro
+        </button>
+
+        <div class="collapse mt-3" id="reportForm">
+            <form action="/report_book" method="post">
+                <input type="hidden" name="book_id" value="{{ book.id }}">
+
+                <div class="mb-3">
+                    <select class="form-select" name="reason" required>
+                        <option value="" disabled selected>Motivo del reporte</option>
+                        {% for value, label in reasons.items() %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <textarea class="form-control" name="details" rows="3" maxlength="500"
+                              placeholder="Detalles (opcional): por ejemplo, qué páginas están dañadas"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-danger">Enviar reporte</button>
+            </form>
+        </div>
+    {% endif %}
+
     <a href="/search" class="btn btn-outline-dark mt-3">Volver a búsqueda</a>
 </div>
 {% endblock %}

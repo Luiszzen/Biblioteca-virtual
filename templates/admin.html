@@ -7,7 +7,11 @@
 {% block main %}
 <div class="container mt-4">
     <h2>Solicitudes pendientes</h2>
-    <p><a href="/admin/books">Ver todos los libros →</a></p>
+    <p>
+        <a href="/admin/books">Ver todos los libros →</a><br>
+        <a href="/admin/reports">Ver reportes de libros →</a>
+        {% if open_reports %}<span class="badge bg-danger">{{ open_reports }}</span>{% endif %}
+    </p>
 
     {% if not pending %}
         <p>No hay solicitudes pendientes.</p>
