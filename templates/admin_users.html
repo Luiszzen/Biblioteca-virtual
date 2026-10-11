@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Admin - Usuarios
+{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2>Usuarios</h2>
+    <p><a href="/admin">← Volver al panel</a></p>
+
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Turno</th>
+                    <th>Grado y sección</th>
+                    <th>Libros prestados</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                    <tr>
+                        <td>
+                            {{ u.username }}
+                            {% if u.is_admin %}<span class="badge bg-dark">Admin</span>{% endif %}
+                        </td>
+                        <td>{{ u.full_name or "-" }}</td>
+                        <td>{{ turnos.get(u.turno, "-") }}</td>
+                        <td>
+                            {% if u.grado %}{{ u.grado }}° {{ u.seccion or "" }}{% else %}-{% endif %}
+                        </td>
+                        <td>{{ u.active_loans }}</td>
+                        <td><a href="/admin/users/{{ u.id }}" class="btn btn-sm btn-outline-primary">Editar</a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

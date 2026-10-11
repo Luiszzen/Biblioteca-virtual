@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    {{ heading }}
+{% endblock %}
+
+{% block main %}
+<div class="container mt-4">
+    <h2 class="mb-2">{{ heading }}</h2>
+    <p><a href="/admin/books">← Volver a libros</a></p>
+
+    <form method="post" class="row g-3">
+
+        <div class="col-md-12">
+            <label for="title" class="form-label">Título</label>
+            <input type="text" class="form-control" id="title" name="title" required value="{{ book.get('title') or '' }}">
+        </div>
+
+        <div class="col-md-6">
+            <label for="author" class="form-label">Autor</label>
+            <input type="text" class="form-control" id="author" name="author" value="{{ book.get('author') or '' }}">
+        </div>
+
+        <div class="col-md-6">
+            <label for="publisher" class="form-label">Editorial</label>
+            <input type="text" class="form-control" id="publisher" name="publisher" value="{{ book.get('publisher') or '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label for="year" class="form-label">Año de publicación</label>
+            <input type="number" class="form-control" id="year" name="year" min="0" max="2100" value="{{ book.get('year') or '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label for="isbn" class="form-label">ISBN</label>
+            <input type="text" class="form-control" id="isbn" name="isbn" value="{{ book.get('isbn') or '' }}">
+        </div>
+
+        <div class="col-md-4">
+            <label for="language" class="form-label">Idioma</label>
+            <input type="text" class="form-control" id="language" name="language" value="{{ book.get('language') or '' }}">
+        </div>
+
+        <div class="col-md-12">
+            <label for="category" class="form-label">Categoría</label>
+            <input type="text" class="form-control" id="category" name="category" value="{{ book.get('category') or '' }}">
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="/admin/books" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

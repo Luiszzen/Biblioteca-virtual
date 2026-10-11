@@ -453,7 +453,7 @@ def admin_books():
 
     rows = db.execute(
         """SELECT books.id, books.title, books.author, books.status,
-                  users.username AS borrowed_by, loans.borrowed_at
+                COALESCE(users.full_name, users.username) AS borrowed_by, loans.borrowed_at
            FROM books
            LEFT JOIN loans ON loans.book_id = books.id AND loans.returned_at IS NULL
            LEFT JOIN users ON loans.user_id = users.id
@@ -470,34 +470,226 @@ def admin_books():
 
     return render_template("admin_books.html", books=rows)
 
-@app.route("/admin/toggle_status/<int:book_id>", methods=["POST"])
+@app.route("/admin/return/<int:book_id>", methods=["POST"])
 @login_required
 @admin_required
-def admin_toggle_status(book_id):
-    """
-    Cambia manualmente el estado de un libro (available <-> borrowed).
-    Si se marca como disponible, cierra cualquier préstamo activo
-    de ese libro para que la tabla deje de mostrar usuario/días.
-    """
+def admin_return_book(book_id):
+    """Registra la devolución de un libro: cierra el préstamo activo y lo deja disponible."""
+
+    book = db.execute("SELECT id, status FROM books WHERE id = ?", book_id)
+    if len(book) != 1:
+        return apology("book not found", 404)
+
+    if book[0]["status"] == "available":
+        flash("Ese libro ya está disponible.")
+        return redirect("/admin/books")
+
+    db.execute(
+        "UPDATE loans SET returned_at = ? WHERE book_id = ? AND returned_at IS NULL",
+        datetime.now().isoformat(), book_id
+    )
+    db.execute("UPDATE books SET status = 'available' WHERE id = ?", book_id)
+
+    flash("Devolución registrada.")
+    return redirect("/admin/books")
+
+
+def read_book_form(form):
+    """Lee y valida los campos de un libro. Devuelve (datos, mensaje_de_error)."""
+
+    def clean(name):
+        return (form.get(name) or "").strip() or None
+
+    data = {
+        "title": (form.get("title") or "").strip(),
+        "author": clean("author"),
+        "publisher": clean("publisher"),
+        "isbn": clean("isbn"),
+        "language": clean("language"),
+        "category": clean("category"),
+        "year": None,
+    }
+
+    year = (form.get("year") or "").strip()
+    if year:
+        if not year.isdigit() or not 0 <= int(year) <= 2100:
+            return data, "El año debe ser un número entre 0 y 2100."
+        data["year"] = int(year)
+
+    if not data["title"]:
+        return data, "El título es obligatorio."
+
+    return data, None
+
+
+@app.route("/admin/books/new", methods=["GET", "POST"])
+@login_required
+@admin_required
+def admin_book_new():
+    """El admin agrega un libro directamente al catálogo (sin solicitud)."""
+
+    if request.method == "POST":
+        data, error = read_book_form(request.form)
+
+        if not error and data["isbn"]:
+            if db.execute("SELECT id FROM books WHERE isbn = ?", data["isbn"]):
+                error = "Ya existe un libro con ese ISBN."
+
+        if error:
+            flash(error)
+            return render_template("admin_book_form.html", book=data, heading="Agregar libro")
+
+        db.execute(
+            """INSERT INTO books (title, author, publisher, year, isbn, language, category, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'available')""",
+            data["title"], data["author"], data["publisher"], data["year"],
+            data["isbn"], data["language"], data["category"]
+        )
+        flash("Libro agregado al catálogo.")
+        return redirect("/admin/books")
+
+    return render_template("admin_book_form.html", book={}, heading="Agregar libro")
+
+
+@app.route("/admin/books/<int:book_id>/edit", methods=["GET", "POST"])
+@login_required
+@admin_required
+def admin_book_edit(book_id):
+    """El admin corrige los datos de un libro. El estado no se cambia aquí."""
 
     book = db.execute("SELECT * FROM books WHERE id = ?", book_id)
     if len(book) != 1:
         return apology("book not found", 404)
 
-    current_status = book[0]["status"]
+    if request.method == "POST":
+        data, error = read_book_form(request.form)
 
-    if current_status == "available":
-        db.execute("UPDATE books SET status = 'borrowed' WHERE id = ?", book_id)
-    else:
-        # Vuelve a disponible: cierra el préstamo activo (si existía uno real)
+        if not error and data["isbn"]:
+            if db.execute("SELECT id FROM books WHERE isbn = ? AND id != ?", data["isbn"], book_id):
+                error = "Otro libro ya tiene ese ISBN."
+
+        if error:
+            flash(error)
+            return render_template("admin_book_form.html", book=data, heading="Editar libro")
+
         db.execute(
-            "UPDATE loans SET returned_at = ? WHERE book_id = ? AND returned_at IS NULL",
-            datetime.now().isoformat(), book_id
+            """UPDATE books SET title = ?, author = ?, publisher = ?, year = ?,
+                                isbn = ?, language = ?, category = ?
+               WHERE id = ?""",
+            data["title"], data["author"], data["publisher"], data["year"],
+            data["isbn"], data["language"], data["category"], book_id
         )
-        db.execute("UPDATE books SET status = 'available' WHERE id = ?", book_id)
+        flash("Libro actualizado.")
+        return redirect("/admin/books")
 
-    flash("Estado del libro actualizado.")
+    return render_template("admin_book_form.html", book=book[0], heading="Editar libro")
+
+
+@app.route("/admin/books/<int:book_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def admin_book_delete(book_id):
+    """Elimina un libro, solo si nunca tuvo préstamos, solicitudes ni reportes."""
+
+    if len(db.execute("SELECT id FROM books WHERE id = ?", book_id)) != 1:
+        return apology("book not found", 404)
+
+    used = (
+        db.execute("SELECT id FROM loans WHERE book_id = ? LIMIT 1", book_id)
+        or db.execute("SELECT id FROM requests WHERE book_id = ? LIMIT 1", book_id)
+        or db.execute("SELECT id FROM book_reports WHERE book_id = ? LIMIT 1", book_id)
+    )
+    if used:
+        flash("No se puede eliminar: el libro tiene historial de préstamos, solicitudes o reportes.")
+        return redirect("/admin/books")
+
+    try:
+        db.execute("DELETE FROM books WHERE id = ?", book_id)
+    except ValueError:
+        flash("No se pudo eliminar el libro.")
+        return redirect("/admin/books")
+
+    flash("Libro eliminado.")
     return redirect("/admin/books")
+
+
+@app.route("/admin/users")
+@login_required
+@admin_required
+def admin_users():
+    """Lista de usuarios con su perfil y cuántos libros tienen prestados ahora."""
+
+    users = db.execute(
+        """SELECT users.id, users.username, users.full_name, users.turno,
+                  users.grado, users.seccion, users.is_admin,
+                  (SELECT COUNT(*) FROM loans
+                   WHERE loans.user_id = users.id AND loans.returned_at IS NULL) AS active_loans
+           FROM users
+           ORDER BY users.is_admin DESC, users.grado, users.seccion, users.full_name, users.username"""
+    )
+    return render_template("admin_users.html", users=users, turnos=TURNOS)
+
+
+@app.route("/admin/users/<int:user_id>", methods=["GET", "POST"])
+@login_required
+@admin_required
+def admin_user_edit(user_id):
+    """El admin corrige el perfil de un usuario (nombre, turno, grado, sección)."""
+
+    user = db.execute(
+        "SELECT id, username, full_name, turno, grado, seccion, is_admin FROM users WHERE id = ?",
+        user_id
+    )
+    if len(user) != 1:
+        return apology("user not found", 404)
+
+    if request.method == "POST":
+        full_name = (request.form.get("full_name") or "").strip() or None
+        turno = request.form.get("turno") or None
+        grado = request.form.get("grado") or None
+        seccion = request.form.get("seccion") or None
+
+        if (turno and turno not in TURNOS) or (grado and grado not in GRADOS) or (seccion and seccion not in SECCIONES):
+            flash("Turno, grado o sección no válidos.")
+            return redirect(f"/admin/users/{user_id}")
+
+        db.execute(
+            "UPDATE users SET full_name = ?, turno = ?, grado = ?, seccion = ? WHERE id = ?",
+            full_name, turno, int(grado) if grado else None, seccion, user_id
+        )
+        flash("Perfil actualizado.")
+        return redirect(f"/admin/users/{user_id}")
+
+    return render_template(
+        "admin_user_edit.html",
+        user=user[0], turnos=TURNOS, grados=GRADOS, secciones=SECCIONES
+    )
+
+
+@app.route("/admin/users/<int:user_id>/password", methods=["POST"])
+@login_required
+@admin_required
+def admin_user_password(user_id):
+    """El admin le pone una contraseña nueva a un usuario (no hay recuperación por correo)."""
+
+    if len(db.execute("SELECT id FROM users WHERE id = ?", user_id)) != 1:
+        return apology("user not found", 404)
+
+    new_password = request.form.get("new_password") or ""
+    confirmation = request.form.get("confirmation") or ""
+
+    if len(new_password) < 6:
+        flash("La contraseña debe tener al menos 6 caracteres.")
+    elif new_password != confirmation:
+        flash("Las contraseñas no coinciden.")
+    else:
+        db.execute(
+            "UPDATE users SET hash = ? WHERE id = ?",
+            generate_password_hash(new_password), user_id
+        )
+        flash("Contraseña restablecida. Entrégasela al usuario en persona.")
+
+    return redirect(f"/admin/users/{user_id}")
 
 @app.route("/admin/reports")
 @login_required

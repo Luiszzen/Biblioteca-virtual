@@ -1,51 +1,67 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Admin - Books
+    Admin - Libros
 {% endblock %}
 
 {% block main %}
 <div class="container mt-4">
     <h2>Todos los libros</h2>
-    <p><a href="/admin">← Volver a solicitudes pendientes</a></p>
+    <p>
+        <a href="/admin">← Volver a solicitudes pendientes</a>
+        <a href="/admin/books/new" class="btn btn-primary btn-sm ms-3">Agregar libro</a>
+    </p>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Título</th>
-                <th>Autor</th>
-                <th>Estado</th>
-                <th>Usuario</th>
-                <th>Días prestado</th>
-                <th>Acción</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for book in books %}
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
                 <tr>
-                    <td>{{ book.title }}</td>
-                    <td>{{ book.author }}</td>
-                    <td>{{ book.status }}</td>
-                    <td>{{ book.borrowed_by or "-" }}</td>
-                    <td>
-                        {% if book.days_borrowed is not none %}
-                            {{ book.days_borrowed }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form action="/admin/toggle_status/{{ book.id }}" method="post">
-                            {% if book.status == "available" %}
-                                <button type="submit" class="btn btn-sm btn-warning">Marcar no disponible</button>
-                            {% else %}
-                                <button type="submit" class="btn btn-sm btn-success">Marcar disponible</button>
-                            {% endif %}
-                        </form>
-                    </td>
+                    <th>Título</th>
+                    <th>Autor</th>
+                    <th>Estado</th>
+                    <th>Prestado a</th>
+                    <th>Días prestado</th>
+                    <th>Acciones</th>
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for book in books %}
+                    <tr>
+                        <td>{{ book.title }}</td>
+                        <td>{{ book.author or "-" }}</td>
+                        <td>
+                            {% if book.status == "available" %}
+                                <span class="badge bg-success">Disponible</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Prestado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ book.borrowed_by or "-" }}</td>
+                        <td>
+                            {% if book.days_borrowed is not none %}
+                                {{ book.days_borrowed }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1 flex-wrap">
+                                {% if book.status != "available" %}
+                                    <form action="/admin/return/{{ book.id }}" method="post">
+                                        <button type="submit" class="btn btn-sm btn-success">Registrar devolución</button>
+                                    </form>
+                                {% endif %}
+                                <a href="/admin/books/{{ book.id }}/edit" class="btn btn-sm btn-outline-primary">Editar</a>
+                                <form action="/admin/books/{{ book.id }}/delete" method="post"
+                                      onsubmit="return confirm('¿Eliminar este libro? Esta acción no se puede deshacer.');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
