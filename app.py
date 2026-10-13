@@ -1,4 +1,5 @@
 import os
+import unicodedata
 from functools import wraps
 
 from cs50 import SQL
@@ -7,7 +8,7 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
 from better_profanity import profanity
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 #app = Flask(__name__)
@@ -19,6 +20,19 @@ from datetime import datetime, timedelta
 #db = SQL("sqlite:///library.db")
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+LIMA_TZ = timezone(timedelta(hours=-5))
+
+
+def now_lima():
+    """Hora actual de Lima, sin zona horaria, para guardarla como texto en la base de datos."""
+    return datetime.now(LIMA_TZ).replace(tzinfo=None)
+
+
+def normalize_text(text):
+    """Minúsculas y sin tildes, para buscar: 'García' -> 'garcia'."""
+    text = unicodedata.normalize("NFD", str(text or ""))
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower()
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-solo-local")
@@ -28,11 +42,11 @@ PRODUCTION = os.environ.get("PRODUCTION") == "1"
 if PRODUCTION and not os.environ.get("SECRET_KEY"):
     raise RuntimeError("Falta SECRET_KEY en producción: defínela en el archivo WSGI.")
 
-app.config["SESSION_COOKIE_SECURE"] = PRODUCTION      #la cookie  por HTTPS
-app.config["SESSION_COOKIE_HTTPONLY"] = True          # js no puede leerla
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"         #no se envía desde otros sitios en POST
-app.config["WTF_CSRF_TIME_LIMIT"] = None              # el token dura lo que dura la sesión
-csrf = CSRFProtect(app)                               # exige token CSRF en todo POST
+app.config["SESSION_COOKIE_SECURE"] = PRODUCTION      
+app.config["SESSION_COOKIE_HTTPONLY"] = True          
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"         
+app.config["WTF_CSRF_TIME_LIMIT"] = None              
+csrf = CSRFProtect(app)                               
 
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
@@ -138,7 +152,7 @@ def login():
 
         attempt_name = username.strip().lower()[:100]
 
-        # Demasiados fallos recientes: se bloquea aunque la contraseña sea correcta
+        # intetos de contraseña
         if recent_login_failures(attempt_name) >= MAX_LOGIN_FAILURES:
             flash("Demasiados intentos fallidos. Espera 15 minutos e inténtalo de nuevo.")
             return render_template("login.html"), 429
@@ -151,7 +165,7 @@ def login():
                 "INSERT INTO login_attempts (username, attempted_at) VALUES (?, ?)",
                 attempt_name, now.isoformat()
             )
-            # Limpieza: borra intentos de hace más de un día
+            # limepza de intentos de contraseña
             db.execute(
                 "DELETE FROM login_attempts WHERE attempted_at < ?",
                 (now - timedelta(days=1)).isoformat()
@@ -255,7 +269,7 @@ def add_book():
             datetime.now().isoformat()
         )
 
-        flash("Solicitud enviada. Un administrador debe aprobarla.")
+        flash("Solicitud enviada. Un administrador debe aprobarla.", "success")
         return redirect("/add_book")
 
     return render_template("add_book.html")
@@ -289,13 +303,12 @@ def borrow():
         session["user_id"], book_id, datetime.now().isoformat()
     )
 
-    flash("Solicitud de préstamo enviada. Un administrador debe aprobarla.")
+    flash("Solicitud de préstamo enviada. Un administrador debe aprobarla.", "success")
     return redirect(f"/book/{book_id}")
 
 
-# Columnas permitidas para buscar -- whitelist para evitar SQL injection,
+# Columnas permitidas para buscar whitelist para evitar SQL injection,
 
-# Motivos permitidos para reportar un libro (clave interna -> texto visible)
 REPORT_REASONS = {
     "damaged": "Libro dañado",
     "missing": "Libro perdido o no está en su lugar",
@@ -345,7 +358,7 @@ def report_book():
         book_id, session["user_id"], reason, details or None, datetime.now().isoformat()
     )
 
-    flash("Reporte enviado. Gracias por avisar.")
+    flash("Reporte enviado. Gracias por avisar.", "success")
     return redirect(f"/book/{book_id}")
 
 # ya que el nombre de columna no se puede parametrizar con "?"
@@ -373,8 +386,10 @@ def search():
     categories = db.execute("SELECT DISTINCT category FROM books WHERE category IS NOT NULL AND category != '' ORDER BY category")
 
     if query:
-        like_query = f"%{query}%"
-        books = db.execute(f"SELECT * FROM books WHERE {column} LIKE ?", like_query)
+        #  ignorar tildes y mayúsculas
+        needle = normalize_text(query)
+        all_books = db.execute("SELECT * FROM books ORDER BY title")
+        books = [b for b in all_books if needle in normalize_text(b[column])]
 
     return render_template(
         "search.html",
@@ -392,11 +407,9 @@ def search_live():
     if not query:
         return jsonify([])
 
-    like_query = f"%{query}%"
-    books = db.execute(
-        "SELECT id, title, author FROM books WHERE title LIKE ? ORDER BY title LIMIT 8",
-        like_query
-    )
+    needle = normalize_text(query)
+    all_books = db.execute("SELECT id, title, author FROM books ORDER BY title")
+    books = [b for b in all_books if needle in normalize_text(b["title"])][:8]
     return jsonify(books)
 
 @app.route("/book/<int:book_id>")
@@ -411,9 +424,8 @@ def book_detail(book_id):
 
 
 
-# ---------------------------------------------------------------------------
 # Panel de administrador
-# ---------------------------------------------------------------------------
+
 @app.route("/admin")
 @login_required
 @admin_required
@@ -433,8 +445,6 @@ def admin_panel():
             book = db.execute("SELECT title FROM books WHERE id = ?", r["book_id"])
             r["book_title"] = book[0]["title"] if book else None
 
-    # FRONTEND: admin.html -> loop sobre `pending`, un formulario POST por cada
-    # solicitud, apuntando a /admin/approve/<id> o /admin/reject/<id>
     open_reports = db.execute("SELECT COUNT(*) AS n FROM book_reports WHERE status = 'open'")[0]["n"]
 
     return render_template("admin.html", pending=pending, open_reports=open_reports)
@@ -454,7 +464,6 @@ def admin_approve(request_id):
     now = datetime.now().isoformat()
 
     if req["type"] == "borrow":
-        # Todo o nada: si algo falla a la mitad, no queda un libro "prestado" sin préstamo.
         db.execute("BEGIN")
         try:
             # Solo se presta si el libro SIGUE disponible (evita préstamos dobles)
@@ -485,8 +494,7 @@ def admin_approve(request_id):
             raise
 
     elif req["type"] == "add_book":
-        # El admin pudo haber corregido los datos en el formulario de /admin --
-        # si vienen en request.form, se usan esos; si no, se usa lo original de la solicitud
+
         title = request.form.get("title") or req["title"]
         author = request.form.get("author") or req["author"]
         publisher = request.form.get("publisher") or req["publisher"]
@@ -514,7 +522,7 @@ def admin_approve(request_id):
             db.execute("ROLLBACK")
             raise
 
-    flash("Solicitud aprobada.")
+    flash("Solicitud aprobada.", "success")
     return redirect("/admin")
 
 
@@ -529,7 +537,7 @@ def admin_reject(request_id):
         datetime.now().isoformat(), session["user_id"], request_id
     )
 
-    flash("Solicitud rechazada.")
+    flash("Solicitud rechazada.", "success")
     return redirect("/admin")
 
 @app.route("/admin/books")
@@ -550,7 +558,6 @@ def admin_books():
            ORDER BY books.title"""
     )
 
-    # Calcula los días prestado en Python (SQLite no tiene un tipo fecha nativo)
     for row in rows:
         if row["borrowed_at"]:
             borrowed_date = datetime.fromisoformat(row["borrowed_at"])
@@ -580,7 +587,7 @@ def admin_return_book(book_id):
     )
     db.execute("UPDATE books SET status = 'available' WHERE id = ?", book_id)
 
-    flash("Devolución registrada.")
+    flash("Devolución registrada.", "success")
     return redirect("/admin/books")
 
 
@@ -635,7 +642,7 @@ def admin_book_new():
             data["title"], data["author"], data["publisher"], data["year"],
             data["isbn"], data["language"], data["category"]
         )
-        flash("Libro agregado al catálogo.")
+        flash("Libro agregado al catálogo.", "success")
         return redirect("/admin/books")
 
     return render_template("admin_book_form.html", book={}, heading="Agregar libro")
@@ -669,7 +676,7 @@ def admin_book_edit(book_id):
             data["title"], data["author"], data["publisher"], data["year"],
             data["isbn"], data["language"], data["category"], book_id
         )
-        flash("Libro actualizado.")
+        flash("Libro actualizado.", "success")
         return redirect("/admin/books")
 
     return render_template("admin_book_form.html", book=book[0], heading="Editar libro")
@@ -699,7 +706,7 @@ def admin_book_delete(book_id):
         flash("No se pudo eliminar el libro.")
         return redirect("/admin/books")
 
-    flash("Libro eliminado.")
+    flash("Libro eliminado.", "success")
     return redirect("/admin/books")
 
 
@@ -747,7 +754,7 @@ def admin_user_edit(user_id):
             "UPDATE users SET full_name = ?, turno = ?, grado = ?, seccion = ? WHERE id = ?",
             full_name, turno, int(grado) if grado else None, seccion, user_id
         )
-        flash("Perfil actualizado.")
+        flash("Perfil actualizado.", "success")
         return redirect(f"/admin/users/{user_id}")
 
     return render_template(
@@ -777,7 +784,7 @@ def admin_user_password(user_id):
             "UPDATE users SET hash = ? WHERE id = ?",
             generate_password_hash(new_password), user_id
         )
-        flash("Contraseña restablecida. Entrégasela al usuario en persona.")
+        flash("Contraseña restablecida. Entrégasela al usuario en persona.", "success")
 
     return redirect(f"/admin/users/{user_id}")
 
@@ -811,7 +818,7 @@ def admin_resolve_report(report_id):
         "UPDATE book_reports SET status = 'resolved', resolved_at = ?, resolved_by = ? WHERE id = ? AND status = 'open'",
         datetime.now().isoformat(), session["user_id"], report_id
     )
-    flash("Reporte marcado como resuelto.")
+    flash("Reporte marcado como resuelto.", "success")
     return redirect("/admin/reports")
 
 @app.route("/history")
@@ -828,7 +835,6 @@ def history():
     )
 
     # Solicitudes del propio usuario (préstamo o agregar libro), de la más nueva a la más antigua.
-    # Para 'borrow' el título viene del libro; para 'add_book' viene de la propia solicitud.
     my_requests = db.execute(
         """SELECT requests.type, requests.status, requests.created_at,
                   COALESCE(books.title, requests.title) AS title
@@ -862,16 +868,27 @@ def report():
            ORDER BY loans.borrowed_at ASC"""
     )
 
-    # FRONTEND: report.html -> two loops, over `most_borrowed` and `currently_out`
     return render_template("report.html", most_borrowed=most_borrowed, currently_out=currently_out)
 
 
 
+# Mensajes de error en español
+ERROR_MESSAGES = {
+    "admin access required": "Solo los administradores pueden entrar aquí.",
+    "must provide a title": "Debes escribir el título del libro.",
+    "inappropriate content detected": "Se detectó lenguaje inapropiado. Corrige el texto e inténtalo de nuevo.",
+    "must select a book": "Debes elegir un libro.",
+    "book not found": "No se encontró el libro.",
+    "book is already borrowed": "Ese libro ya está prestado.",
+    "this book already has a pending request": "Ese libro ya tiene una solicitud pendiente.",
+    "request not found": "No se encontró la solicitud (quizá ya fue atendida).",
+    "user not found": "No se encontró el usuario.",
+}
+
+
 def apology(message, code=400):
-    """
-    Render an error page. Called from other routes, e.g. return apology("...", 400).
-    FRONTEND: apology.html should display `{{ message }}` and maybe `{{ code }}`
-    """
+    """Muestra una página de error con el mensaje traducido."""
+    message = ERROR_MESSAGES.get(message, message)
     return render_template("apology.html", message=message, code=code), code
 
 

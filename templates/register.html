@@ -9,7 +9,6 @@
 
     <form action="/register" method="post">
 
-        <!-- Los name="..." deben coincidir EXACTO con request.form.get(...) en la ruta /register de app.py -->
         <div class="mb-3">
             <input autocomplete="off" autofocus class="form-control" name="username" placeholder="Usuario" required type="text" value="{{ form.get('username', '') }}">
         </div>
