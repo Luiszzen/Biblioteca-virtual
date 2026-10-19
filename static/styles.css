@@ -1,23 +1,17 @@
-/* ============================================================
-   BIBLIOTECA VIRTUAL — sistema de diseño
-   Paleta: tinta navy + pergamino + bronce (identidad de biblioteca)
-   Tipografía: Fraunces (títulos, serif con carácter) + Source Sans 3 (cuerpo)
-   ============================================================ */
-
 :root {
-    --ink: #1B2A41;          /* navy oscuro -- navbar, texto principal */
-    --ink-soft: #2E4258;     /* navy más claro -- hover, bordes sutiles */
-    --parchment: #F3EEE1;    /* fondo general, tono pergamino */
-    --parchment-light: #FBF9F3;
+    --ink: #1B2A41;
+    --ink-soft: #2E4258;
+    --parchment: #FFFFFF;  
+    --parchment-light: #FFFFFF;
     --card-bg: #FFFFFF;
-    --brass: #B08D57;        /* bronce -- acento principal */
+    --brass: #B08D57;
     --brass-dark: #8F7042;
-    --burgundy: #6E1F2A;     /* rojo libro -- peligro / rechazar */
+    --burgundy: #6E1F2A;
     --burgundy-dark: #551621;
-    --sage: #4C7A5E;         /* verde salvia -- éxito / disponible */
+    --sage: #4C7A5E;
     --sage-dark: #3B5F49;
-    --amber: #C68A2E;        /* advertencia */
-
+    --amber: #C68A2E;
+    --navbar-bg: #6E1F2A;  
     --font-display: "Fraunces", "Georgia", serif;
     --font-body: "Source Sans 3", "Segoe UI", sans-serif;
 
@@ -25,8 +19,6 @@
     --shadow-sm: 0 1px 3px rgba(27, 42, 65, 0.08);
     --shadow-md: 0 6px 20px rgba(27, 42, 65, 0.12);
 }
-
-/* ---------- Base ---------- */
 
 body {
     margin: 0;
@@ -53,25 +45,140 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.01em;
 }
 
+/* Contenedor principal */
+.tarjeta {
+    display: flex;
+    align-items: center; 
+    justify-content: space-between; 
+    gap: 40px;         
+    max-width: 1000px;  
+    margin: 0 auto;          
+    padding: 20px;
+}
+
+/* Columna de texto (Izquierda) */
+.contenido-texto {
+    flex: 1;     
+    max-width: 500px;       
+}
+
+.contenido-texto h2 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #1e1e1e;
+}
+
+.contenido-texto p {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #666666;
+}
+
+/* Imagen (Derecha) */
+.imagen-tarjeta {
+    flex: 1;                   
+    width: 10%;              
+    max-width: 500px;      
+    height: auto;           
+    border-radius: 12px;   
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+}
+
+h3 {
+    font-family: 'Times New Roman', Times, serif;
+    color: #080808;
+}
+
+.testimonials {
+    margin: 3.5rem 0 1rem;
+    padding: 2.5rem 1.5rem 3.5rem;
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border-top: 4px solid var(--brass);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.testimonials h2 {
+    margin-bottom: 1.75rem;
+}
+.testimonials h2::after {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.testimonial {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 3rem 1.75rem;   
+}
+
+.testimonial blockquote {
+    margin: 0 0 1rem;
+}
+.testimonial blockquote p {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--ink);
+    margin: 0;
+}
+.testimonial blockquote p::before { content: "\201C"; color: var(--brass); }
+.testimonial blockquote p::after  { content: "\201D"; color: var(--brass); }
+
+.testimonial figcaption {
+    font-weight: 600;
+    color: var(--brass-dark);
+}
+
+.testimonials .carousel-control-prev,
+.testimonials .carousel-control-next {
+    width: 3rem;
+    opacity: 1;
+}
+.testimonials .carousel-control-prev-icon,
+.testimonials .carousel-control-next-icon {
+    filter: invert(1);
+    opacity: 0.45;
+    transition: opacity 0.15s ease;
+}
+.testimonials .carousel-control-prev:hover .carousel-control-prev-icon,
+.testimonials .carousel-control-next:hover .carousel-control-next-icon {
+    opacity: 1;
+}
+
+/* Puntos indicadores */
+.testimonials .carousel-indicators {
+    margin-bottom: 0;
+}
+.testimonials .carousel-indicators [data-bs-target] {
+    width: 10px;
+    height: 10px;
+    margin: 0 5px;
+    border: 0;
+    border-radius: 50%;
+    background-color: var(--brass);
+}
+
+@media (max-width: 576px) {
+    .testimonial { padding: 0 2.25rem 1.75rem; }
+    .testimonial blockquote p { font-size: 1.15rem; }
+}
+
+
+
 h1 { font-size: 2.4rem; }
 h2 {
-    font-size: 1.7rem;
+    font-size: 2.2rem;
     margin-bottom: 1.25rem;
     position: relative;
     padding-bottom: 0.5rem;
 }
 
-/* Firma visual: una pequeña regla bicolor bajo cada h2, como un
-   marcapáginas -- se repite en todo el sitio para dar identidad */
-h2::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: 46px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--brass), var(--burgundy));
-    border-radius: 2px;
+p {
+    font-size: 1.1rem;
 }
 
 a {
@@ -86,7 +193,7 @@ a:hover {
 /* ---------- Navbar ---------- */
 
 nav.navbar {
-    background: var(--ink) !important;
+    background: var(--navbar-bg) !important;
     box-shadow: var(--shadow-md);
     padding: 0.75rem 0;
 }
@@ -115,7 +222,6 @@ nav.navbar .nav-link:hover {
     text-decoration: none;
 }
 
-/* ---------- Botones ---------- */
 
 .btn {
     font-family: var(--font-body);
@@ -182,7 +288,6 @@ nav.navbar .nav-link:hover {
     --bs-btn-border-color: #8A8578;
 }
 
-/* ---------- Tarjetas ---------- */
 
 .card, .card-body {
     background: var(--card-bg) !important;
@@ -201,7 +306,6 @@ nav.navbar .nav-link:hover {
     box-shadow: var(--shadow-md);
 }
 
-/* ---------- Formularios ---------- */
 
 label, .form-label {
     font-weight: 600;
@@ -236,7 +340,6 @@ form.row, .container form {
     max-width: none;
 }
 
-/* ---------- Tablas ---------- */
 
 .table {
     background: var(--card-bg);
@@ -262,15 +365,11 @@ form.row, .container form {
     background-color: rgba(176, 141, 87, 0.06);
 }
 
-/* ---------- Listas ---------- */
-
 .list-group-item {
     border-color: rgba(27, 42, 65, 0.1);
     background: var(--card-bg);
     padding: 0.75rem 1rem;
 }
-
-/* ---------- Badges / estados ---------- */
 
 .badge.bg-success {
     background-color: var(--sage) !important;
@@ -279,8 +378,6 @@ form.row, .container form {
     background-color: var(--amber) !important;
     color: #fff !important;
 }
-
-/* ---------- Alertas ---------- */
 
 .alert {
     border: none;
@@ -299,8 +396,6 @@ form.row, .container form {
     border-left-color: var(--sage);
 }
 
-/* ---------- Pantalla de bienvenida (index sin sesión) ---------- */
-
 .text-center.mt-5 h1 {
     font-size: 2.6rem;
     margin-bottom: 0.5rem;
@@ -311,15 +406,11 @@ form.row, .container form {
     margin-bottom: 1.5rem;
 }
 
-/* ---------- Responsive ---------- */
-
 @media (max-width: 576px) {
     main { padding: 1.25rem 1rem 3rem; }
     h1 { font-size: 1.9rem; }
     nav.navbar .navbar-brand { font-size: 1.25rem; }
 }
-
-/* ---------- Accesibilidad: foco visible ---------- */
 
 a:focus-visible, button:focus-visible, .btn:focus-visible {
     outline: 3px solid var(--brass);
