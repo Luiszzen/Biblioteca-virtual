@@ -45,21 +45,29 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.01em;
 }
 
+/* Quita la "barrera" de 1100px en la página de inicio: usa todo el ancho, con margen lateral del 5% */
+main.main-full {
+    max-width: none;
+    margin: 0;
+    padding-left: 5vw;
+    padding-right: 5vw;
+}
+
 /* Contenedor principal */
 .tarjeta {
     display: flex;
     align-items: center; 
     justify-content: space-between; 
     gap: 40px;         
-    max-width: 1000px;  
-    margin: 0 auto;          
-    padding: 20px;
+    max-width: none;        /* antes: 1000px */
+    margin: 0;              /* antes: 0 auto */
+    padding: 20px 0;        /* antes: 20px */
 }
 
 /* Columna de texto (Izquierda) */
 .contenido-texto {
-    flex: 1;     
-    max-width: 500px;       
+    flex: 1 1 0;     
+    max-width: 0;       
 }
 
 .contenido-texto h2 {
@@ -77,12 +85,18 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Imagen (Derecha) */
 .imagen-tarjeta {
-    flex: 1;                   
-    width: 10%;              
-    max-width: 500px;      
+    flex: 1 1 0;
+    min-width: 0;              
+    width: 100%;      
     height: auto;           
     border-radius: 12px;   
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+}
+
+/* En pantallas angostas (celular): el texto va arriba y la imagen abajo */
+@media (max-width: 768px) {
+    .tarjeta { flex-direction: column; gap: 2rem; }
+    .contenido-texto, .imagen-tarjeta { flex: none; width: 100%; }
 }
 
 h3 {
@@ -396,11 +410,11 @@ form.row, .container form {
     border-left-color: var(--sage);
 }
 
-.text-center.mt-5 h1 {
+.bienvenida h1 {
     font-size: 2.6rem;
     margin-bottom: 0.5rem;
 }
-.text-center.mt-5 p {
+.bienvenida p {
     color: var(--ink-soft);
     font-size: 1.1rem;
     margin-bottom: 1.5rem;
