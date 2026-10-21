@@ -1,20 +1,20 @@
 :root {
-    --ink: #1B2A41;
+    --ink: #f0eee6;
     --ink-soft: #2E4258;
-    --parchment: #FFFFFF;  
-    --parchment-light: #FFFFFF;
-    --card-bg: #FFFFFF;
-    --brass: #B08D57;
-    --brass-dark: #8F7042;
+    --parchment: #262321;  
+    --parchment-light: #262321;
+    --card-bg: #262321;
+    --brass: #fa4f00;
+    --brass-dark: #fa4f00B3;
     --burgundy: #6E1F2A;
     --burgundy-dark: #551621;
     --sage: #4C7A5E;
     --sage-dark: #3B5F49;
     --amber: #C68A2E;
-    --navbar-bg: #6E1F2A;  
+    --orange: #fa4f00;
+    --navbar-bg: #f0eee6;  
     --font-display: "Fraunces", "Georgia", serif;
     --font-body: "Source Sans 3", "Segoe UI", sans-serif;
-
     --radius: 10px;
     --shadow-sm: 0 1px 3px rgba(27, 42, 65, 0.08);
     --shadow-md: 0 6px 20px rgba(27, 42, 65, 0.12);
@@ -59,9 +59,9 @@ main.main-full {
     align-items: center; 
     justify-content: space-between; 
     gap: 40px;         
-    max-width: none;        /* antes: 1000px */
-    margin: 0;              /* antes: 0 auto */
-    padding: 20px 0;        /* antes: 20px */
+    max-width: none; 
+    margin: 0;    
+    padding: 20px 0;
 }
 
 /* Columna de texto (Izquierda) */
@@ -70,16 +70,17 @@ main.main-full {
 }
 
 .contenido-texto h2 {
-    font-size: 2.5rem;
+    font-size: 4rem;
     font-weight: bold;
     margin-bottom: 15px;
-    color: #1e1e1e;
+    font-family: serif;
+    color: #f0eee6;
 }
 
 .contenido-texto p {
-    font-size: 1rem;
+    font-size: 1.5rem;
     line-height: 1.5;
-    color: #666666;
+    color: #f0eee6CC;
 }
 
 /* Imagen (Derecha) */
@@ -99,8 +100,23 @@ main.main-full {
 }
 
 h3 {
-    font-family: 'Times New Roman', Times, serif;
-    color: #080808;
+    font-family: arial;
+    color: #f0eee6;
+    font-size: 1.7rem;
+}
+
+.introduccion {
+    background-color: var(--orange);
+    border: none;
+    color: var(--ink);
+    font-size: 1.5rem;
+    font-family: sans-serif;
+    padding: 12px 24px;
+    border-radius: 10px;
+}
+
+.introduccion:hover {
+    background-color: #fa4f00B3;
 }
 
 .testimonials {
@@ -191,7 +207,7 @@ h2 {
 }
 
 p {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
 }
 
 a {
@@ -223,15 +239,15 @@ nav.navbar .nav-link {
     font-family: var(--font-body);
     font-weight: 600;
     font-size: 0.95rem;
-    color: rgba(243, 238, 225, 0.8) !important;
+    color: #262321 !important;
     padding: 0.4rem 0.85rem !important;
     border-radius: var(--radius);
     transition: background 0.15s ease, color 0.15s ease;
 }
 
 nav.navbar .nav-link:hover {
-    color: var(--parchment-light) !important;
-    background: rgba(176, 141, 87, 0.25);
+    color: var(--orange) !important;
+    background: #fa4f0033;
     text-decoration: none;
 }
 
