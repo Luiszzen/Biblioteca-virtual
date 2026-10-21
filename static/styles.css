@@ -45,7 +45,6 @@ h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.01em;
 }
 
-/* Quita la "barrera" de 1100px en la página de inicio: usa todo el ancho, con margen lateral del 5% */
 main.main-full {
     max-width: none;
     margin: 0;
@@ -93,7 +92,6 @@ main.main-full {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
 }
 
-/* En pantallas angostas (celular): el texto va arriba y la imagen abajo */
 @media (max-width: 768px) {
     .tarjeta { flex-direction: column; gap: 2rem; }
     .contenido-texto, .imagen-tarjeta { flex: none; width: 100%; }
@@ -219,7 +217,7 @@ a:hover {
     text-decoration: underline;
 }
 
-/* ---------- Navbar ---------- */
+/*  Navbar  */
 
 nav.navbar {
     background: var(--navbar-bg) !important;
