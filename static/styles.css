@@ -109,7 +109,7 @@ main.main-full {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
 }
 
-@media (max-width: 768px) {
+@media (max-width: 992px) {
     .tarjeta { flex-direction: column; gap: 2rem; }
     .contenido-texto, .imagen-tarjeta { flex: none; width: 100%; }
 }
@@ -121,6 +121,8 @@ h3 {
 }
 
 .introduccion {
+    display: inline-block;
+    text-decoration: none; 
     background-color: var(--orange);
     border: none;
     color: var(--ink);
@@ -133,6 +135,7 @@ h3 {
 
 .introduccion:hover {
     background-color: #fa4f00B3;
+    text-decoration: none;
 }
 
 .testimonials {
@@ -267,6 +270,20 @@ nav.navbar .nav-link:hover {
     text-decoration: none;
 }
 
+/* Pantallas grandes: marca a la izquierda, enlaces en el centro, "Cerrar sesión" a la derecha */
+@media (min-width: 992px) {
+    nav.navbar .container-fluid {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;   /* los dos lados miden lo mismo: el centro queda centrado */
+        align-items: center;
+    }
+    nav.navbar .navbar-collapse {
+        display: contents !important;
+    }
+    nav.navbar .navbar-brand { justify-self: start; }                         /* el enlace mide solo lo que mide el texto */
+    nav.navbar .navbar-nav.me-auto { grid-column: 2; }                        /* Historial, Buscar, Añadir Libro */
+    nav.navbar .navbar-nav.ms-auto { grid-column: 3; justify-self: end; }     /* Cerrar sesión */
+}
 
 .btn {
     font-family: var(--font-body);
