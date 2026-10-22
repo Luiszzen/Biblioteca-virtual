@@ -138,11 +138,7 @@
             books.forEach((book) => {
                 const li = document.createElement("li");
                 li.textContent = `${book.title} - ${book.author}`;
-                li.style.cursor = "pointer";
-                li.style.padding = "8px";
-                li.style.border = "1px solid #ccc";
-                li.style.listStyle = "none";
-                li.style.backgroundColor = "white";
+                li.className = "suggestion-item";
 
                 li.addEventListener("click", () => {
                     textInput.value = book.title;
