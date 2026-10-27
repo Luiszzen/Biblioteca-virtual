@@ -270,17 +270,16 @@ nav.navbar .nav-link:hover {
     text-decoration: none;
 }
 
-/* Pantallas grandes: marca a la izquierda, enlaces en el centro, "Cerrar sesión" a la derecha */
 @media (min-width: 992px) {
     nav.navbar .container-fluid {
         display: grid;
-        grid-template-columns: 1fr auto 1fr;   /* los dos lados miden lo mismo: el centro queda centrado */
+        grid-template-columns: 1fr auto 1fr;
         align-items: center;
     }
     nav.navbar .navbar-collapse {
         display: contents !important;
     }
-    nav.navbar .navbar-brand { justify-self: start; }                         /* el enlace mide solo lo que mide el texto */
+    nav.navbar .navbar-brand { justify-self: start; }
     nav.navbar .navbar-nav.me-auto { grid-column: 2; }                        /* Historial, Buscar, Añadir Libro */
     nav.navbar .navbar-nav.ms-auto { grid-column: 3; justify-self: end; }     /* Cerrar sesión */
 }
@@ -497,16 +496,16 @@ form.row, .container form {
     padding: 0.75rem 1rem;
 }
 
-/* estado (sin verde ni rojo: solo tu paleta) */
-.badge.bg-success {            /* disponible, devuelto, aprobada, resuelto */
+/* aplicando los coleros de la paleta d ecolores */
+.badge.bg-success {
     background-color: var(--ink) !important;
     color: var(--parchment) !important;
 }
-.badge.bg-warning {            /* prestado, pendiente, abierto */
+.badge.bg-warning { 
     background-color: var(--orange) !important;
     color: var(--parchment) !important;
 }
-.badge.bg-danger {             /* rechazada, contador de reportes */
+.badge.bg-danger {
     background-color: var(--danger) !important;
     color: var(--ink) !important;
 }

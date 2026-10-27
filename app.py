@@ -93,9 +93,6 @@ def csrf_error(error):
 def login_required(f):
     """
     Decorator: redirect to /login if the user isn't logged in.
-    Put this on every route that a book-lending action needs
-    (borrow, return, add_book, history...). Public pages like
-    index/search/login/register don't need it.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -115,7 +112,6 @@ def admin_required(f):
 
 @app.route("/")
 def index():
-    """Homepage informativa, sin lógica de libros."""
     return render_template("index.html")
 
 MAX_LOGIN_FAILURES = 5
@@ -307,7 +303,7 @@ def borrow():
     return redirect(f"/book/{book_id}")
 
 
-# Columnas permitidas para buscar whitelist para evitar SQL injection,
+# Columnas permitidas para  whitelist y evitar SQL injection,
 
 REPORT_REASONS = {
     "damaged": "Libro dañado",

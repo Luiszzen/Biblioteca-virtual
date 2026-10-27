@@ -1,7 +1,6 @@
 """Copia de seguridad de library.db.
 python3 backup_db.py
-Guarda  copia con fecha y hora en "backups",al lado de la
-carpeta del proyecto (fuera de Git), conserva las últimas 14 copias.
+(fuera de Git), conserva las últimas 14 copias.
 """
 import glob
 import os
