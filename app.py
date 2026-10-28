@@ -339,7 +339,7 @@ def report_book():
         flash("El detalle contiene lenguaje inapropiado.")
         return redirect(f"/book/{book_id}")
 
-    # Evita que el mismo usuario mande el mismo reporte varias veces mientras sigue abierto
+    # Evita que el mismo u suario mande el mismo reporte varias veces mientras sigue abierto
     existing = db.execute(
         "SELECT id FROM book_reports WHERE book_id = ? AND user_id = ? AND status = 'open'",
         book_id, session["user_id"]
@@ -357,7 +357,21 @@ def report_book():
     flash("Reporte enviado. Gracias por avisar.", "success")
     return redirect(f"/book/{book_id}")
 
-# ya que el nombre de columna no se puede parametrizar con "?"
+
+COVER_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def cover_url(book_id):
+    """URL de la portada del libro, o None si todavía no tiene imagen."""
+    for ext in COVER_EXTENSIONS:
+        if os.path.exists(os.path.join(BASE_DIR, "static", "covers", f"{book_id}{ext}")):
+            return f"/static/covers/{book_id}{ext}"
+    return None
+
+
+app.jinja_env.globals["cover_url"] = cover_url
+
+
 SEARCH_COLUMNS = {
     "title": "title",
     "author": "author",
@@ -378,21 +392,41 @@ def search():
 
     column = SEARCH_COLUMNS[category]
     books = []
+    popular = []
+    recent = []
+    shelves = []
 
     categories = db.execute("SELECT DISTINCT category FROM books WHERE category IS NOT NULL AND category != '' ORDER BY category")
 
     if query:
-        #  ignorar tildes y mayúsculas
+        #ignorar tildes y mayúsculas
         needle = normalize_text(query)
         all_books = db.execute("SELECT * FROM books ORDER BY title")
         books = [b for b in all_books if needle in normalize_text(b[column])]
+    else:
+        popular = db.execute(
+            """SELECT books.*, COUNT(loans.id) AS times_borrowed
+               FROM books JOIN loans ON loans.book_id = books.id
+               GROUP BY books.id
+               ORDER BY times_borrowed DESC, books.title
+               LIMIT 12"""
+        )
+        recent = db.execute("SELECT * FROM books ORDER BY id DESC LIMIT 12")
+
+        by_category = {}
+        for book in db.execute("SELECT * FROM books ORDER BY title"):
+            by_category.setdefault(book["category"] or "Sin categoría", []).append(book)
+        shelves = [(name, items[:12], len(items)) for name, items in sorted(by_category.items(), key=lambda kv: (kv[0] == "Sin categoría", kv[0]))]
 
     return render_template(
         "search.html",
         books=books,
         query=query,
         category=category,
-        categories=categories
+        categories=categories,
+        popular=popular,
+        recent=recent,
+        shelves=shelves
     )
 
 

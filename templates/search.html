@@ -1,81 +1,142 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Search
+    Buscar
 {% endblock %}
+
+{% block main_class %}main-full{% endblock %}
 
 {% block main %}
 
-<form action="/search" method="get">
+{% macro libro(book) %}
+    {% set portada = cover_url(book.id) %}
+    <a class="libro-card" href="/book/{{ book.id }}">
+        <div class="libro-portada">
+            {% if portada %}
+                <img src="{{ portada }}" alt="Portada de {{ book.title }}" loading="lazy">
+            {% else %}
+                <div class="libro-portada-vacia"><span>{{ book.title }}</span></div>
+            {% endif %}
 
-    <select name="category" id="category">
-        <option value="title" {% if category == "title" %}selected{% endif %}>Título</option>
-        <option value="author" {% if category == "author" %}selected{% endif %}>Autor</option>
-        <option value="category" {% if category == "category" %}selected{% endif %}>Categoría</option>
-        <option value="status" {% if category == "status" %}selected{% endif %}>Estado</option>
-    </select>
+            {% if book.status == "available" %}
+                <span class="libro-estado disponible">Disponible</span>
+            {% else %}
+                <span class="libro-estado prestado">Prestado</span>
+            {% endif %}
+        </div>
+        <div class="libro-titulo">{{ book.title }}</div>
+        <div class="libro-autor">por <span>{{ book.author or "autor desconocido" }}</span></div>
+    </a>
+{% endmacro %}
 
-    <div id="text-search">
-        <input
-            type="text"
-            name="q"
-            id="q"
-            placeholder="Buscar..."
-            autocomplete="off"
-            value="{{ query or '' }}"
-        >
-    </div>
 
-    <div id="status-search" style="display: none;">
-        <select name="q" id="status-q">
-            <option value="">Selecciona un estado</option>
-            <option value="available" {% if query == "available" %}selected{% endif %}>Disponible</option>
-            <option value="borrowed" {% if query == "borrowed" %}selected{% endif %}>No disponible</option>
+{% macro estante(titulo, libros, total=0, enlace="") %}
+    <section class="estante">
+        <div class="estante-cabecera">
+            <h2>{{ titulo }}</h2>
+            <div class="estante-controles">
+                {% if enlace and total > libros|length %}
+                    <a href="{{ enlace }}" class="estante-ver">Ver todos ({{ total }})</a>
+                {% endif %}
+                <button type="button" class="estante-flecha" data-dir="-1" aria-label="Anterior">&larr;</button>
+                <button type="button" class="estante-flecha" data-dir="1" aria-label="Siguiente">&rarr;</button>
+            </div>
+        </div>
+        <div class="estante-fila">
+            {% for b in libros %}{{ libro(b) }}{% endfor %}
+        </div>
+    </section>
+{% endmacro %}
+
+<section class="buscador-hero">
+    <h1>Encuentra tu próximo libro</h1>
+
+    <form action="/search" method="get" class="buscador-form">
+
+        <select name="category" id="category" class="buscador-tipo" aria-label="Buscar por">
+            <option value="title" {% if category == "title" %}selected{% endif %}>Título</option>
+            <option value="author" {% if category == "author" %}selected{% endif %}>Autor</option>
+            <option value="category" {% if category == "category" %}selected{% endif %}>Categoría</option>
+            <option value="publisher" {% if category == "publisher" %}selected{% endif %}>Editorial</option>
+            <option value="language" {% if category == "language" %}selected{% endif %}>Idioma</option>
+            <option value="status" {% if category == "status" %}selected{% endif %}>Estado</option>
         </select>
-    </div>
 
-    <div id="category-search" style="display: none;">
-        <select name="q" id="category-q">
-            <option value="">Selecciona una categoría</option>
-            {% for c in categories %}
-                <option value="{{ c.category }}" {% if query == c.category %}selected{% endif %}>
-                    {{ c.category }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+        <div class="buscador-campo">
+            <div id="text-search">
+                <input
+                    type="text"
+                    name="q"
+                    id="q"
+                    placeholder="Buscar un libro..."
+                    autocomplete="off"
+                    value="{{ query or '' }}"
+                >
+            </div>
 
-    <button type="submit" class="btn btn-primary">Buscar</button>
+            <div id="status-search" style="display: none;">
+                <select name="q" id="status-q">
+                    <option value="">Selecciona un estado</option>
+                    <option value="available" {% if query == "available" %}selected{% endif %}>Disponible</option>
+                    <option value="borrowed" {% if query == "borrowed" %}selected{% endif %}>No disponible</option>
+                </select>
+            </div>
 
-    <ul id="suggestions"></ul>
-</form>
+            <div id="category-search" style="display: none;">
+                <select name="q" id="category-q">
+                    <option value="">Selecciona una categoría</option>
+                    {% for c in categories %}
+                        <option value="{{ c.category }}" {% if query == c.category %}selected{% endif %}>
+                            {{ c.category }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
 
-<hr>
+            <ul id="suggestions"></ul>
+        </div>
 
-{% if books %}
-    <h3>Resultados</h3>
-    <ul class="list-group">
-        {% for book in books %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>{{ book.title }}</strong>
-                    Estado:
-                    {% if book.status == "available" %}
-                        Disponible
-                    {% else %}
-                        Prestado
-                    {% endif %}
-                </div>
+        <button type="submit" class="btn btn-primary">Buscar</button>
+    </form>
+</section>
 
-                <a href="/book/{{ book.id }}" class="btn btn-sm btn-outline-primary">
-                    Ver libro
-                </a>
-            </li>
-        {% endfor %}
-    </ul>
-{% elif query %}
-    <p>No se encontraron resultados para "{{ query }}".</p>
+{% if query %}
+    <section class="estante">
+        <div class="estante-cabecera">
+            <h2>
+                {% if category == "status" %}
+                    {{ "Libros disponibles" if query == "available" else "Libros no disponibles" }}
+                {% else %}
+                    Resultados para “{{ query }}”
+                {% endif %}
+            </h2>
+            <div class="estante-controles">
+                <a href="/search" class="estante-ver">Limpiar búsqueda</a>
+            </div>
+        </div>
+
+        {% if books %}
+            <div class="resultados-grid">
+                {% for b in books %}{{ libro(b) }}{% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">No se encontraron resultados.</p>
+        {% endif %}
+    </section>
+
+{% else %}
+    {% if popular %}{{ estante("Populares", popular) }}{% endif %}
+    {% if recent %}{{ estante("Recién agregados", recent) }}{% endif %}
+
+    {% for nombre, libros, total in shelves %}
+        {{ estante(nombre, libros, total, ("/search?category=category&q=" ~ (nombre|urlencode)) if nombre != "Sin categoría" else "") }}
+    {% endfor %}
+
+    {% if not recent %}
+        <p class="text-muted">Todavía no hay libros en el catálogo.</p>
+    {% endif %}
 {% endif %}
+
 
 <script>
     const categorySelect = document.getElementById("category");
@@ -88,10 +149,13 @@
     const categoryInput = document.getElementById("category-q");
     const suggestionsList = document.getElementById("suggestions");
 
+    const TEXT_TYPES = ["title", "author", "publisher", "language"];
+
     function updateSearchField() {
         const selected = categorySelect.value;
+        const isText = TEXT_TYPES.includes(selected);
 
-        textSearch.style.display = (selected === "title" || selected === "author") ? "block" : "none";
+        textSearch.style.display = isText ? "block" : "none";
         statusSearch.style.display = (selected === "status") ? "block" : "none";
         categorySearch.style.display = (selected === "category") ? "block" : "none";
 
@@ -99,7 +163,7 @@
         statusInput.removeAttribute("name");
         categoryInput.removeAttribute("name");
 
-        if (selected === "title" || selected === "author") {
+        if (isText) {
             textInput.setAttribute("name", "q");
         } else if (selected === "status") {
             statusInput.setAttribute("name", "q");
@@ -167,6 +231,27 @@
             suggestionsList.innerHTML = "";
             suggestionsList.style.display = "none";
         }
+    });
+
+    // flechas para cdaa estante
+    // pdta. fue un dolor de cabeza esta parte xd
+    document.querySelectorAll(".estante").forEach((estante) => {
+        const fila = estante.querySelector(".estante-fila");
+        const flechas = estante.querySelectorAll(".estante-flecha");
+        if (!fila) return;
+
+        flechas.forEach((boton) => {
+            boton.addEventListener("click", () => {
+                fila.scrollBy({ left: boton.dataset.dir * fila.clientWidth * 0.9, behavior: "smooth" });
+            });
+        });
+
+        function mostrarFlechas() {
+            const hayMas = fila.scrollWidth > fila.clientWidth + 4;
+            flechas.forEach((boton) => { boton.style.display = hayMas ? "" : "none"; });
+        }
+        mostrarFlechas();
+        window.addEventListener("resize", mostrarFlechas);
     });
 </script>
 
