@@ -83,6 +83,16 @@ def after_request(response):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+@app.context_processor
+def static_con_version():
+    """Agrega ?v=<fecha del archivo> a los archivos estáticos: así el navegador siempre descarga la versión nueva."""
+    def static_v(archivo):
+        try:
+            version = int(os.path.getmtime(os.path.join(BASE_DIR, "static", archivo)))
+        except OSError:
+            version = 0
+        return f"/static/{archivo}?v={version}"
+    return {"static_v": static_v}
 
 @app.errorhandler(CSRFError)
 def csrf_error(error):
